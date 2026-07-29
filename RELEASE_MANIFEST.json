@@ -1,9 +1,14 @@
 {
   "app": "malaysia_workforce",
-  "version": "1.0.0-rc.3",
-  "generated_on": "2026-07-29",
-  "file_count": 196,
+  "version": "1.0.0-rc.4",
+  "generated_on": "2026-07-30",
+  "file_count": 198,
   "files": [
+    {
+      "path": ".DS_Store",
+      "size": 6148,
+      "sha256": "d1f739fb198e000f637379cc7c8fa2860585f949834f593d1c5ec94e9955d86c"
+    },
     {
       "path": ".editorconfig",
       "size": 226,
@@ -16,18 +21,18 @@
     },
     {
       "path": ".gitignore",
-      "size": 124,
-      "sha256": "bad345b0a29ea456b5f2a0d913cb472602baa0c8b334b0b9334447766ef6b8ed"
+      "size": 140,
+      "sha256": "7d45609bbe76a0d183f4a8fc11a7e1925e9284bd31627718a78b50d07a2604c3"
     },
     {
       "path": "CHANGELOG.md",
-      "size": 2813,
-      "sha256": "7724f03c4d680fa1e090fb6c2f758971153e49a2eb43f58f316935d2a9566a7a"
+      "size": 3072,
+      "sha256": "dd76af919ea4922df2df230d6409f6ca66dcad8a100e92c0443cbb55359e5fca"
     },
     {
       "path": "README.md",
       "size": 10542,
-      "sha256": "deb831b3e753cc198a6c6e43209f8bd5d9910c1e5b9862884b19bb3e6d52f85a"
+      "sha256": "1a44c7ed1cfeb472dee737d26c048059d0f48a65dd1d1360c0b739cc1aeca405"
     },
     {
       "path": "docs/API.md",
@@ -42,7 +47,7 @@
     {
       "path": "docs/CODE_AUDIT_AND_TEST_REPORT.md",
       "size": 6462,
-      "sha256": "1ac19706366ea183e28e64916105322475dcd4680a46da991f47955e9e297d29"
+      "sha256": "0e44831d0b77c42e3db78820d05ad3a68bac65a2d81a9e8178cc7a1fe24a0830"
     },
     {
       "path": "docs/CONFIGURATION.md",
@@ -52,7 +57,7 @@
     {
       "path": "docs/INSTALLATION.md",
       "size": 3332,
-      "sha256": "9a64dc6442b9b3866a9516b29d52df9eff482032ddf0197eb57350b36ce8ffb8"
+      "sha256": "03156a5ccc06f3c9a414b96d9c3f09a63a8d3da908279348b8629c6ab43f7511"
     },
     {
       "path": "docs/LEGAL_AND_STATUTORY.md",
@@ -72,7 +77,7 @@
     {
       "path": "docs/RELEASE_VALIDATION.md",
       "size": 4513,
-      "sha256": "df090e088ac7f3013096f08aa6a8438abfb9a89b10460b616ab8c2945eafbdae"
+      "sha256": "7bfa99dba9666489fc2cd0bbdc33407d503396ab1e09c1df2efb862774c5c892"
     },
     {
       "path": "docs/SECURITY.md",
@@ -87,7 +92,7 @@
     {
       "path": "docs/VALIDATION.md",
       "size": 3055,
-      "sha256": "b7786ddaf5621bdb63cc8e800897ae75c1b50495f5b22828b3fac5aeab444721"
+      "sha256": "fcbbfdb8abecda1487479dd67f44f589cdf537bb3c1b0243580a0bb637e5f24f"
     },
     {
       "path": "license.txt",
@@ -95,9 +100,14 @@
       "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
     },
     {
+      "path": "malaysia_workforce/.DS_Store",
+      "size": 10244,
+      "sha256": "9e744d218b0159809b3e912c43039305e67451ee67d3f5025ebf13201b51c06c"
+    },
+    {
       "path": "malaysia_workforce/__init__.py",
       "size": 25,
-      "sha256": "5e6b6884f2ec8d5a2af476cd81513c24222a287efb384d9e446f50660a2243ea"
+      "sha256": "bc97e08e4a40f804a96b1c4eae06c7f734549fa09cc34ada97d4f0354c94b43f"
     },
     {
       "path": "malaysia_workforce/api/__init__.py",
@@ -177,7 +187,7 @@
     {
       "path": "malaysia_workforce/install.py",
       "size": 986,
-      "sha256": "bb321763a016e08a71c15843666592e3fee49565531d7660e4d2ea9d95c70d9e"
+      "sha256": "d95121b7ac55e55d7b32cf52fd30a9a3538f2d43e6c9fad392eb6fb1112e4523"
     },
     {
       "path": "malaysia_workforce/live_tests/__init__.py",
@@ -927,7 +937,7 @@
     {
       "path": "malaysia_workforce/tests/test_release_contracts.py",
       "size": 9665,
-      "sha256": "c9995bc9d5dd30ee10a2c4ffa1ba1365db339369f89c42e9e46dbd566fbc434f"
+      "sha256": "795990ba4dcb9f47bc21c0c66333791c7ec3c79f698bfb49f3b3619de7e594cb"
     },
     {
       "path": "malaysia_workforce/tests/test_roster_core.py",
@@ -967,12 +977,12 @@
     {
       "path": "package.json",
       "size": 285,
-      "sha256": "31e6ad8f40b76ec07f868c40cf87b684876fb0584b5c1098b58d77ce20f14e5e"
+      "sha256": "cd9edeb9c63eb388a008c0625282e620bc2b139205c67deeeb35ccd6c60e6e53"
     },
     {
       "path": "pyproject.toml",
       "size": 1071,
-      "sha256": "3696a1df0f70a177cb7087f2f12be4600536adffe7395b74a041aebdabcfaa07"
+      "sha256": "d10bdf489c31392e3a65d43f01fe6c95208f422d9b95d0f0d40e5c124f870aa4"
     },
     {
       "path": "scripts/run_live_bench_test.sh",

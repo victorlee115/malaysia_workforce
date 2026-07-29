@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-rc.4 — 2026-07-29
+
+- Corrected the Frappe app distribution name from `malaysia-workforce` to `malaysia_workforce`.
+- Ensured Bench clones the app to `apps/malaysia_workforce`.
+- Fixed installation failure when Bench reads the application version.
+
 ## 1.0.0-rc.3 — 2026-07-29
 
 - Corrected the legacy EPF CSV header to `Salary`.

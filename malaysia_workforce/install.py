@@ -15,7 +15,7 @@ def before_install():
 			frappe.throw(_("Malaysia Workforce requires ERPNext and Frappe HR to be installed first."))
 	major = int(frappe.__version__.split(".")[0])
 	if major != SUPPORTED_MAJOR:
-		frappe.throw(_("Malaysia Workforce 1.0.0-rc.3 supports Frappe v16 only. Detected v{0}.").format(major))
+		frappe.throw(_("Malaysia Workforce 1.0.0-rc.4 supports Frappe v16 only. Detected v{0}.").format(major))
 
 
 def after_install():

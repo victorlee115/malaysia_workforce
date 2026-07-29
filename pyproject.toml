@@ -1,5 +1,5 @@
 [project]
-name = "malaysia-workforce"
+name = "malaysia_workforce"
 authors = [
   { name = "Malaysia Workforce contributors" }
 ]

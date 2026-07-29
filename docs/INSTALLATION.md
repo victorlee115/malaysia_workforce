@@ -16,7 +16,7 @@ Recommended prerequisites:
 
 ```bash
 cd /path/to/frappe-bench
-unzip malaysia_workforce-1.0.0-rc.3.zip -d /tmp
+unzip malaysia_workforce-1.0.0-rc.4.zip -d /tmp
 mv /tmp/malaysia_workforce apps/malaysia_workforce
 ./env/bin/pip install -e apps/malaysia_workforce
 bench --site staging.example.com install-app malaysia_workforce

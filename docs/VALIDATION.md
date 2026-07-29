@@ -9,7 +9,7 @@ npm run check:js
 python scripts/verify_release.py
 ```
 
-Expected pure/static-test result for 1.0.0-rc.3: **56 passed**.
+Expected pure/static-test result for 1.0.0-rc.4: **56 passed**.
 
 The PCB suite reproduces the bundled official worked-example targets:
 

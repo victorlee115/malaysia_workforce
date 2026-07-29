@@ -138,7 +138,7 @@ def test_portal_error_messages_are_html_escaped():
 	assert 'message: error.message || String(error)' not in portal
 
 
-def test_release_documents_and_installer_match_rc3():
+def test_release_documents_and_installer_match_rc4():
 	for relative in (
 		"README.md",
 		"docs/INSTALLATION.md",
@@ -148,7 +148,7 @@ def test_release_documents_and_installer_match_rc3():
 	):
 		text = (ROOT / relative).read_text()
 		assert "1.0.0-rc.1" not in text
-	assert "1.0.0-rc.3" in (ROOT / "README.md").read_text()
+	assert "1.0.0-rc.4" in (ROOT / "README.md").read_text()
 	assert "56 passed" in (ROOT / "docs/VALIDATION.md").read_text()
 
 

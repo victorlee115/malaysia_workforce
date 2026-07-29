@@ -1,7 +1,7 @@
 # Code audit and test report
 
 **Application:** Malaysia Workforce  
-**Audited release:** 1.0.0-rc.3  
+**Audited release:** 1.0.0-rc.4  
 **Date:** 2026-07-29
 
 ## Audit method

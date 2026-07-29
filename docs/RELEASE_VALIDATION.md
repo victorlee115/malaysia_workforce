@@ -1,6 +1,6 @@
 # Release validation report
 
-**Release:** 1.0.0-rc.3  
+**Release:** 1.0.0-rc.4  
 **Validation date:** 2026-07-29  
 **Target:** Frappe 16 / ERPNext 16 / Frappe HR 16 / Python 3.14 / Node 24
 

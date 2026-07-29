@@ -1,6 +1,6 @@
 # Malaysia Workforce for ERPNext/Frappe HR
 
-**Version:** 1.0.0-rc.3  
+**Version:** 1.0.0-rc.4  
 **Supported stack:** Frappe 16, ERPNext 16 and Frappe HR 16  
 **Licence:** GPL-3.0-or-later
 
