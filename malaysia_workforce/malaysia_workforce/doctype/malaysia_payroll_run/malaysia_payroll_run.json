@@ -1,0 +1,251 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "creation": "2026-07-29 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "company",
+  "payroll_frequency",
+  "branch",
+  "department",
+  "cost_center",
+  "payroll_payable_account",
+  "start_date",
+  "end_date",
+  "payroll_date",
+  "is_final_run_for_month",
+  "payroll_entry",
+  "employer_contribution_journal",
+  "employer_contribution_total",
+  "status",
+  "approved_work_records",
+  "work_records_total",
+  "additional_salary_count",
+  "source_work_record_hash",
+  "validation_errors",
+  "source_work_record_names",
+  "variance_summary",
+  "last_processed_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "MW-PR-.YYYY.-.#####",
+   "default": "MW-PR-.YYYY.-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "payroll_frequency",
+   "fieldtype": "Select",
+   "label": "Payroll Frequency",
+   "options": "Monthly\nFortnightly\nBimonthly\nWeekly\nDaily",
+   "default": "Monthly",
+   "reqd": 1
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center"
+  },
+  {
+   "fieldname": "payroll_payable_account",
+   "fieldtype": "Link",
+   "label": "Payroll Payable Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "payroll_date",
+   "fieldtype": "Date",
+   "label": "Payroll Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "payroll_entry",
+   "fieldtype": "Link",
+   "label": "Payroll Entry",
+   "options": "Payroll Entry"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nCollecting\nValidation Failed\nReady\nPayroll Generated\nSubmitted\nStatutory Files Generated\nReconciled",
+   "default": "Draft",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_work_records",
+   "fieldtype": "Int",
+   "label": "Approved Work Records",
+   "read_only": 1
+  },
+  {
+   "fieldname": "work_records_total",
+   "fieldtype": "Currency",
+   "label": "Work Records Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "additional_salary_count",
+   "fieldtype": "Int",
+   "label": "Additional Salary Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "validation_errors",
+   "fieldtype": "Code",
+   "label": "Validation Errors",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "variance_summary",
+   "fieldtype": "Code",
+   "label": "Variance Summary",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_processed_on",
+   "fieldtype": "Datetime",
+   "label": "Last Processed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "is_final_run_for_month",
+   "fieldtype": "Check",
+   "label": "Final Pay Run for Contribution Month",
+   "default": "0",
+   "description": "Enable this on the final weekly/fortnightly run so statutory deductions are fully reconciled for the month."
+  },
+  {
+   "fieldname": "source_work_record_hash",
+   "fieldtype": "Data",
+   "label": "Source Work Record Hash",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "source_work_record_names",
+   "fieldtype": "Code",
+   "label": "Frozen Source Work Records",
+   "options": "JSON",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "employer_contribution_journal",
+   "fieldtype": "Link",
+   "label": "Employer Contribution Journal",
+   "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employer_contribution_total",
+   "fieldtype": "Currency",
+   "label": "Employer Contribution Total",
+   "precision": "2",
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Malaysia Workforce",
+ "name": "Malaysia Payroll Run",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Malaysia Payroll User",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "HR Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Malaysia HR Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "naming_series:"
+}

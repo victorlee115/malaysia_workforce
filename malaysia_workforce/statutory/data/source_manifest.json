@@ -1,0 +1,55 @@
+{
+  "eis_2024.pdf": {
+    "sha256": "fa6a0d20ab0b579f215aa6fa0e5ca3d41b16a0790bc9a15ed2e3bed56c3b4036",
+    "size": 458086
+  },
+  "epf_third_schedule_2025.pdf": {
+    "sha256": "c4904e44f0cb15a251a59e4f34c11a1ededa0868b962b2ebd9b81270285358b1",
+    "size": 761109
+  },
+  "generated_tables": {
+    "eis_2024.csv": {
+      "rows": 65,
+      "sha256": "47fa4ed72bda298513d16f0baf250b161009ceb973a2e61f7bd86d9da20dc123"
+    },
+    "epf_part_a_2025.csv": {
+      "rows": 401,
+      "sha256": "30fe9c54b33677c1b92caa9445a4ecafe637bc4529fe749fd7888ebad342a074"
+    },
+    "epf_part_c_2025.csv": {
+      "rows": 401,
+      "sha256": "e5ac6e842d297e69e58df67d56289f0fea17bae0ad1102ecbf841226ec409d2e"
+    },
+    "epf_part_e_2025.csv": {
+      "rows": 401,
+      "sha256": "97222c7cd6a56aa044f0d6df6e812c9d33a2b7e6f396946f562ece7781f517ff"
+    },
+    "socso_skbbk_2026.csv": {
+      "rows": 65,
+      "sha256": "066b7d140c2317a8c5015f195d60f03f1c4672eaab27761c0e47e87e67b19145"
+    }
+  },
+  "official_reference_pages": {
+    "epf_mandatory_contribution": "https://www.kwsp.gov.my/en/employer/responsibilities/mandatory-contribution",
+    "epf_third_schedule": "https://www.kwsp.gov.my/en/epf-act-1991-third-schedule",
+    "lhdn_employer_payroll": "https://www.hasil.gov.my/en/employers/",
+    "lhdn_mtd_payment": "https://www.hasil.gov.my/en/employers/mtd-payment/",
+    "perkeso_combined_format_faq": "https://www.perkeso.gov.my/images/lindung/lindung-24-jam/FAQ_TextFileFormat_EN.pdf",
+    "perkeso_combined_format_specification": "https://www.perkeso.gov.my/images/borang/lindung24jam/formatteksfail.pdf",
+    "perkeso_contribution_rates": "https://www.perkeso.gov.my/en/rate-of-contribution.html",
+    "perkeso_lindung_24_jam": "https://www.perkeso.gov.my/skim-kemalangan-bukan-bencana-kerja-lindung-24-jam.html"
+  },
+  "pcb_2026.pdf": {
+    "sha256": "a1618051c858393d92d868c9975c183309d3d07e48f0e4f0cdef589f45f5800c",
+    "size": 1375535
+  },
+  "perkeso_combined_format_2026.pdf": {
+    "sha256": "7412bc8d5a975e01c41440c98b5cc1d51651b437a29a96ea0c201c9e3af84a03",
+    "size": 191770
+  },
+  "reviewed_on": "2026-07-29",
+  "socso_skbbk_2026.pdf": {
+    "sha256": "e76b2a03740f6da4a305919c677d4935a05e9166502e5f06afe1030b7407caa1",
+    "size": 219851
+  }
+}

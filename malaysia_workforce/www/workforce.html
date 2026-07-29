@@ -1,0 +1,25 @@
+{% extends "templates/web.html" %}
+{% block title %}{{ _(title) }}{% endblock %}
+{% block page_content %}
+<div id="mw-portal" class="mw-portal" aria-live="polite">
+	<header class="mw-portal-header">
+		<div><span class="mw-eyebrow">{{ _("Malaysia Workforce") }}</span><h1>{{ _("My Workforce") }}</h1></div>
+		<button class="mw-icon-button" id="mw-refresh" aria-label="{{ _('Refresh') }}">↻</button>
+	</header>
+	<nav class="mw-tabs" aria-label="{{ _('Workforce sections') }}">
+		<button class="active" data-tab="home">{{ _("Home") }}</button>
+		<button data-tab="offers">{{ _("Offers") }} <span id="mw-offer-count" class="mw-tab-count" hidden></span></button>
+		<button data-tab="open">{{ _("Open Work") }}</button>
+		<button data-tab="applications">{{ _("Applications") }}</button>
+		<button data-tab="shifts">{{ _("Confirmed") }}</button>
+	</nav>
+	<main id="mw-content"><div class="mw-loading">{{ _("Loading…") }}</div></main>
+</div>
+<div class="modal fade" id="mw-apply-modal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+		<div class="modal-header"><h5 class="modal-title">{{ _("Specify when you can work") }}</h5><button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"><span aria-hidden="true">&times;</span></button></div>
+		<div class="modal-body" id="mw-apply-body"></div>
+		<div class="modal-footer"><button class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">{{ _("Cancel") }}</button><button class="btn btn-primary" id="mw-submit-application">{{ _("Submit availability") }}</button></div>
+	</div></div>
+</div>
+{% endblock %}

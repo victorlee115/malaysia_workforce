@@ -1,0 +1,12 @@
+{
+ "name": "malaysia-workforce",
+ "private": true,
+ "version": "1.0.0-rc.3",
+ "description": "Desk and portal assets for Malaysia Workforce",
+ "scripts": {
+  "check:js": "find malaysia_workforce -name '*.js' -print0 | xargs -0 -n1 node --check"
+ },
+ "engines": {
+  "node": ">=24"
+ }
+}

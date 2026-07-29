@@ -1,0 +1,68 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "creation": "2026-07-29 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "scheme",
+  "treatment",
+  "reason_code",
+  "notes",
+  "effective_from",
+  "effective_until"
+ ],
+ "fields": [
+  {
+   "fieldname": "scheme",
+   "fieldtype": "Select",
+   "label": "Scheme",
+   "options": "EPF\nSOCSO\nEIS\nPCB\nLINDUNG 24 Jam",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "treatment",
+   "fieldtype": "Select",
+   "label": "Treatment",
+   "options": "Automatic\nApplicable\nNot Applicable\nPending Review",
+   "default": "Automatic",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "reason_code",
+   "fieldtype": "Select",
+   "label": "Reason",
+   "options": "\nContract for Service\nExcluded Employee Category\nAge Treatment\nCitizenship or Immigration Treatment\nNo Wages This Month\nOther Employer Designated\nOfficial Authority Determination\nPending Registration\nOther"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "label": "Effective From"
+  },
+  {
+   "fieldname": "effective_until",
+   "fieldtype": "Date",
+   "label": "Effective Until"
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Malaysia Workforce",
+ "name": "Statutory Coverage Line",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "istable": 1,
+ "editable_grid": 1
+}

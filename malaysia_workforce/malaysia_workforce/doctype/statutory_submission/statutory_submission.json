@@ -1,0 +1,340 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "creation": "2026-07-29 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "company",
+  "authority",
+  "submission_type",
+  "contribution_year",
+  "contribution_month",
+  "revision",
+  "submission_mode",
+  "status",
+  "schema_version",
+  "portal_url",
+  "payroll_run",
+  "employee_lines",
+  "source_salary_slips",
+  "source_snapshot_hash",
+  "employer_reference_snapshot",
+  "employee_count",
+  "wage_total",
+  "employee_contribution_total",
+  "employer_contribution_total",
+  "extra_employee_total",
+  "payable_total",
+  "generated_file",
+  "file_sha256",
+  "generated_on",
+  "generated_by",
+  "validation_errors",
+  "external_reference",
+  "submitted_on",
+  "acknowledgement",
+  "accepted_on",
+  "receipt",
+  "paid_on",
+  "payment_reference",
+  "paid_amount",
+  "reconciled_on",
+  "reconciliation_difference"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "MW-SUB-.YYYY.-.#####",
+   "default": "MW-SUB-.YYYY.-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "authority",
+   "fieldtype": "Select",
+   "label": "Authority",
+   "options": "LHDN\nEPF\nPERKESO",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "submission_type",
+   "fieldtype": "Select",
+   "label": "Submission Type",
+   "options": "Monthly PCB\nEPF Form A\nSOCSO EIS Combined\nCP8D Preparation\nForm E Preparation\nEmployee Notification\nAnnual Statement",
+   "reqd": 1
+  },
+  {
+   "fieldname": "contribution_year",
+   "fieldtype": "Int",
+   "label": "Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "contribution_month",
+   "fieldtype": "Int",
+   "label": "Month"
+  },
+  {
+   "fieldname": "revision",
+   "fieldtype": "Int",
+   "label": "Revision",
+   "default": "0"
+  },
+  {
+   "fieldname": "submission_mode",
+   "fieldtype": "Select",
+   "label": "Submission Mode",
+   "options": "File Upload\nPortal Only\nAPI\nDocument Only",
+   "default": "File Upload"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nGenerated\nValidation Failed\nNot Required\nReady for Portal\nSubmitted\nAccepted\nRejected\nPaid\nReconciled",
+   "default": "Draft",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "payroll_run",
+   "fieldtype": "Link",
+   "label": "Payroll Run",
+   "options": "Malaysia Payroll Run"
+  },
+  {
+   "fieldname": "employee_lines",
+   "fieldtype": "Table",
+   "label": "Employees",
+   "options": "Statutory Submission Employee"
+  },
+  {
+   "fieldname": "employee_count",
+   "fieldtype": "Int",
+   "label": "Employee Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "wage_total",
+   "fieldtype": "Currency",
+   "label": "Wage Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee_contribution_total",
+   "fieldtype": "Currency",
+   "label": "Employee Contribution Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employer_contribution_total",
+   "fieldtype": "Currency",
+   "label": "Employer Contribution Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extra_employee_total",
+   "fieldtype": "Currency",
+   "label": "Extra Employee Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "generated_file",
+   "fieldtype": "Attach",
+   "label": "Generated File",
+   "read_only": 1
+  },
+  {
+   "fieldname": "file_sha256",
+   "fieldtype": "Data",
+   "label": "SHA-256",
+   "read_only": 1
+  },
+  {
+   "fieldname": "validation_errors",
+   "fieldtype": "Code",
+   "label": "Validation Errors",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "external_reference",
+   "fieldtype": "Data",
+   "label": "External Reference"
+  },
+  {
+   "fieldname": "submitted_on",
+   "fieldtype": "Datetime",
+   "label": "Submitted On"
+  },
+  {
+   "fieldname": "acknowledgement",
+   "fieldtype": "Attach",
+   "label": "Acknowledgement"
+  },
+  {
+   "fieldname": "receipt",
+   "fieldtype": "Attach",
+   "label": "Receipt"
+  },
+  {
+   "fieldname": "reconciliation_difference",
+   "fieldtype": "Currency",
+   "label": "Reconciliation Difference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "schema_version",
+   "fieldtype": "Data",
+   "label": "Schema / Specification Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employer_reference_snapshot",
+   "fieldtype": "Code",
+   "label": "Employer Reference Snapshot",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_snapshot_hash",
+   "fieldtype": "Data",
+   "label": "Source Snapshot SHA-256",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "source_salary_slips",
+   "fieldtype": "Code",
+   "label": "Frozen Source Salary Slips",
+   "options": "JSON",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "generated_on",
+   "fieldtype": "Datetime",
+   "label": "Generated On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "generated_by",
+   "fieldtype": "Link",
+   "label": "Generated By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "portal_url",
+   "fieldtype": "Data",
+   "label": "Official Portal URL",
+   "read_only": 1
+  },
+  {
+   "fieldname": "accepted_on",
+   "fieldtype": "Datetime",
+   "label": "Accepted On"
+  },
+  {
+   "fieldname": "paid_on",
+   "fieldtype": "Datetime",
+   "label": "Paid On"
+  },
+  {
+   "fieldname": "payment_reference",
+   "fieldtype": "Data",
+   "label": "Payment Reference"
+  },
+  {
+   "fieldname": "paid_amount",
+   "fieldtype": "Currency",
+   "label": "Paid Amount",
+   "precision": "2"
+  },
+  {
+   "fieldname": "reconciled_on",
+   "fieldtype": "Datetime",
+   "label": "Reconciled On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payable_total",
+   "fieldtype": "Currency",
+   "label": "Total Payable to Authority",
+   "precision": "2",
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Malaysia Workforce",
+ "name": "Statutory Submission",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Malaysia Payroll User",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Statutory Administrator",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "HR Manager",
+   "read": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "Malaysia HR Manager",
+   "read": 1,
+   "print": 1,
+   "report": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "naming_series:",
+ "title_field": "authority",
+ "track_seen": 1
+}

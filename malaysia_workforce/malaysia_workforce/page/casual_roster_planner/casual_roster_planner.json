@@ -1,0 +1,14 @@
+{
+ "doctype": "Page",
+ "name": "casual-roster-planner",
+ "module": "Malaysia Workforce",
+ "page_name": "casual-roster-planner",
+ "title": "Casual Roster Planner",
+ "standard": "Yes",
+ "roles": [
+  {"role": "System Manager"},
+  {"role": "HR Manager"},
+  {"role": "Malaysia HR Manager"},
+  {"role": "Roster Manager"}
+ ]
+}

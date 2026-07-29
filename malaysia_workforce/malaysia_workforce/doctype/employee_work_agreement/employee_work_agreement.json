@@ -1,0 +1,290 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "creation": "2026-07-29 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "employee",
+  "company",
+  "effective_from",
+  "effective_until",
+  "relationship_section",
+  "work_arrangement",
+  "contract_relationship",
+  "regularity",
+  "jurisdiction",
+  "pay_section",
+  "pay_basis",
+  "base_hourly_rate",
+  "base_daily_rate",
+  "per_shift_rate",
+  "normal_daily_hours",
+  "normal_weekly_hours",
+  "comparable_full_time_daily_hours",
+  "comparable_full_time_weekly_hours",
+  "guaranteed_weekly_hours",
+  "maximum_daily_hours",
+  "maximum_weekly_hours",
+  "minimum_shift_hours",
+  "weekly_rest_day",
+  "split_shifts_allowed",
+  "location_section",
+  "branch",
+  "shift_location",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "MW-WA-.YYYY.-.#####",
+   "default": "MW-WA-.YYYY.-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "fetch_from": "employee.company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "label": "Effective From",
+   "reqd": 1
+  },
+  {
+   "fieldname": "effective_until",
+   "fieldtype": "Date",
+   "label": "Effective Until"
+  },
+  {
+   "fieldname": "relationship_section",
+   "fieldtype": "Section Break",
+   "label": "Relationship"
+  },
+  {
+   "fieldname": "work_arrangement",
+   "fieldtype": "Select",
+   "label": "Work Arrangement",
+   "options": "Full Time\nPart Time\nCasual\nTemporary\nSeasonal\nContractor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "contract_relationship",
+   "fieldtype": "Select",
+   "label": "Contract Relationship",
+   "options": "Contract of Service\nContract for Service\nApprenticeship",
+   "reqd": 1,
+   "default": "Contract of Service"
+  },
+  {
+   "fieldname": "regularity",
+   "fieldtype": "Select",
+   "label": "Regularity",
+   "options": "Regular Fixed\nRegular Variable\nOccasional or Irregular\nSeasonal",
+   "default": "Occasional or Irregular"
+  },
+  {
+   "fieldname": "jurisdiction",
+   "fieldtype": "Select",
+   "label": "Legal Jurisdiction",
+   "options": "Peninsular Malaysia\nSabah\nSarawak",
+   "default": "Peninsular Malaysia"
+  },
+  {
+   "fieldname": "pay_section",
+   "fieldtype": "Section Break",
+   "label": "Pay and Hours"
+  },
+  {
+   "fieldname": "pay_basis",
+   "fieldtype": "Select",
+   "label": "Pay Basis",
+   "options": "Hourly\nDaily\nPer Shift\nMonthly\nPiece Rate\nCommission",
+   "reqd": 1,
+   "default": "Hourly"
+  },
+  {
+   "fieldname": "base_hourly_rate",
+   "fieldtype": "Currency",
+   "label": "Base Hourly Rate",
+   "precision": "2"
+  },
+  {
+   "fieldname": "base_daily_rate",
+   "fieldtype": "Currency",
+   "label": "Base Daily Rate",
+   "precision": "2"
+  },
+  {
+   "fieldname": "per_shift_rate",
+   "fieldtype": "Currency",
+   "label": "Per Shift Rate",
+   "precision": "2"
+  },
+  {
+   "fieldname": "normal_daily_hours",
+   "fieldtype": "Float",
+   "label": "Normal Daily Hours",
+   "precision": "2"
+  },
+  {
+   "fieldname": "normal_weekly_hours",
+   "fieldtype": "Float",
+   "label": "Normal Weekly Hours",
+   "precision": "2"
+  },
+  {
+   "fieldname": "comparable_full_time_daily_hours",
+   "fieldtype": "Float",
+   "label": "Comparable Full-Time Daily Hours",
+   "precision": "2",
+   "default": "8"
+  },
+  {
+   "fieldname": "comparable_full_time_weekly_hours",
+   "fieldtype": "Float",
+   "label": "Comparable Full-Time Weekly Hours",
+   "precision": "2",
+   "default": "45"
+  },
+  {
+   "fieldname": "guaranteed_weekly_hours",
+   "fieldtype": "Float",
+   "label": "Guaranteed Weekly Hours",
+   "precision": "2"
+  },
+  {
+   "fieldname": "maximum_daily_hours",
+   "fieldtype": "Float",
+   "label": "Maximum Daily Hours",
+   "precision": "2",
+   "default": "12"
+  },
+  {
+   "fieldname": "maximum_weekly_hours",
+   "fieldtype": "Float",
+   "label": "Maximum Weekly Hours",
+   "precision": "2",
+   "default": "45"
+  },
+  {
+   "fieldname": "minimum_shift_hours",
+   "fieldtype": "Float",
+   "label": "Minimum Shift Hours",
+   "precision": "2",
+   "default": "2"
+  },
+  {
+   "fieldname": "weekly_rest_day",
+   "fieldtype": "Select",
+   "label": "Normal Weekly Rest Day",
+   "options": "\nMonday\nTuesday\nWednesday\nThursday\nFriday\nSaturday\nSunday",
+   "default": "Sunday"
+  },
+  {
+   "fieldname": "split_shifts_allowed",
+   "fieldtype": "Check",
+   "label": "Split Shifts Allowed",
+   "default": "0"
+  },
+  {
+   "fieldname": "location_section",
+   "fieldtype": "Section Break",
+   "label": "Work Location"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "shift_location",
+   "fieldtype": "Link",
+   "label": "Shift Location",
+   "options": "Shift Location"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Malaysia Workforce",
+ "name": "Employee Work Agreement",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "HR Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Malaysia HR Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Malaysia Payroll User",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "naming_series:",
+ "title_field": "employee"
+}

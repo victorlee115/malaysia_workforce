@@ -1,0 +1,291 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "creation": "2026-07-29 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "company",
+  "effective_from",
+  "identity_section",
+  "nric_number",
+  "old_ic_number",
+  "passport_number",
+  "passport_country_code",
+  "nationality_status",
+  "legacy_foreign_epf_opt_in",
+  "income_tax_number",
+  "epf_number",
+  "employee_extra_epf_rate",
+  "employer_extra_epf_rate",
+  "socso_number",
+  "eis_number",
+  "tax_section",
+  "tax_resident",
+  "tax_category",
+  "tax_regime",
+  "individual_disabled",
+  "spouse_disabled",
+  "child_units",
+  "socso_section",
+  "socso_category",
+  "eis_eligible",
+  "lindung_designation",
+  "other_employment_declared",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "fetch_from": "employee.company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "label": "Effective From",
+   "reqd": 1,
+   "default": "Today"
+  },
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Identity and Registration"
+  },
+  {
+   "fieldname": "nric_number",
+   "fieldtype": "Data",
+   "label": "NRIC Number"
+  },
+  {
+   "fieldname": "old_ic_number",
+   "fieldtype": "Data",
+   "label": "Old IC Number"
+  },
+  {
+   "fieldname": "passport_number",
+   "fieldtype": "Data",
+   "label": "Passport Number"
+  },
+  {
+   "fieldname": "passport_country_code",
+   "fieldtype": "Data",
+   "label": "Passport Country Code",
+   "length": 2
+  },
+  {
+   "fieldname": "nationality_status",
+   "fieldtype": "Select",
+   "label": "Nationality Status",
+   "options": "Malaysian\nPermanent Resident\nNon-Malaysian",
+   "reqd": 1,
+   "default": "Malaysian"
+  },
+  {
+   "fieldname": "legacy_foreign_epf_opt_in",
+   "fieldtype": "Check",
+   "label": "Foreign Employee Elected EPF Before 1 August 1998",
+   "default": "0"
+  },
+  {
+   "fieldname": "income_tax_number",
+   "fieldtype": "Data",
+   "label": "Income Tax Number"
+  },
+  {
+   "fieldname": "epf_number",
+   "fieldtype": "Data",
+   "label": "EPF Member Number"
+  },
+  {
+   "fieldname": "employee_extra_epf_rate",
+   "fieldtype": "Percent",
+   "label": "Additional Employee EPF Rate",
+   "default": "0"
+  },
+  {
+   "fieldname": "employer_extra_epf_rate",
+   "fieldtype": "Percent",
+   "label": "Additional Employer EPF Rate",
+   "default": "0"
+  },
+  {
+   "fieldname": "socso_number",
+   "fieldtype": "Data",
+   "label": "SOCSO Number"
+  },
+  {
+   "fieldname": "eis_number",
+   "fieldtype": "Data",
+   "label": "EIS Number"
+  },
+  {
+   "fieldname": "tax_section",
+   "fieldtype": "Section Break",
+   "label": "Tax Profile"
+  },
+  {
+   "fieldname": "tax_resident",
+   "fieldtype": "Check",
+   "label": "Malaysian Tax Resident",
+   "default": "1"
+  },
+  {
+   "fieldname": "tax_category",
+   "fieldtype": "Select",
+   "label": "PCB Category",
+   "options": "1\n2\n3",
+   "default": "1",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tax_regime",
+   "fieldtype": "Select",
+   "label": "Tax Regime",
+   "options": "STANDARD\nREP\nKNOWLEDGE_WORKER\nC_SUITE\nFLAT_15",
+   "default": "STANDARD"
+  },
+  {
+   "fieldname": "individual_disabled",
+   "fieldtype": "Check",
+   "label": "Disabled Individual",
+   "default": "0"
+  },
+  {
+   "fieldname": "spouse_disabled",
+   "fieldtype": "Check",
+   "label": "Disabled Spouse",
+   "default": "0"
+  },
+  {
+   "fieldname": "child_units",
+   "fieldtype": "Float",
+   "label": "Qualifying Child Units",
+   "default": "0",
+   "precision": "2"
+  },
+  {
+   "fieldname": "socso_section",
+   "fieldtype": "Section Break",
+   "label": "SOCSO, EIS and Other Employment"
+  },
+  {
+   "fieldname": "socso_category",
+   "fieldtype": "Select",
+   "label": "SOCSO Category",
+   "options": "First\nSecond",
+   "default": "First"
+  },
+  {
+   "fieldname": "eis_eligible",
+   "fieldtype": "Check",
+   "label": "EIS Eligible",
+   "default": "1"
+  },
+  {
+   "fieldname": "lindung_designation",
+   "fieldtype": "Select",
+   "label": "LINDUNG 24 Jam Designation",
+   "options": "Automatic\nThis Employer\nOther Employer\nNot Applicable",
+   "default": "Automatic"
+  },
+  {
+   "fieldname": "other_employment_declared",
+   "fieldtype": "Check",
+   "label": "Other Employment Declared",
+   "default": "0"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Malaysia Workforce",
+ "name": "Malaysia Employee Profile",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "HR Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Malaysia HR Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Malaysia Payroll User",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Statutory Administrator",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "field:employee",
+ "title_field": "employee"
+}

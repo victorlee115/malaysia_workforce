@@ -1,0 +1,43 @@
+[project]
+name = "malaysia-workforce"
+authors = [
+  { name = "Malaysia Workforce contributors" }
+]
+description = "Malaysian workforce, casual roster, payroll and statutory localisation for ERPNext/Frappe HR"
+requires-python = ">=3.14,<3.15"
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+dynamic = ["version"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: Frappe",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3.14",
+]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench.frappe-dependencies]
+frappe = ">=16.0.0,<17.0.0"
+erpnext = ">=16.0.0,<17.0.0"
+hrms = ">=16.0.0,<17.0.0"
+
+[tool.ruff]
+line-length = 110
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "UP", "B", "RUF"]
+ignore = ["E501", "B904"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+
+[tool.pytest.ini_options]
+testpaths = ["malaysia_workforce/tests"]
+markers = [
+  "frappe: requires a live Frappe test site",
+]

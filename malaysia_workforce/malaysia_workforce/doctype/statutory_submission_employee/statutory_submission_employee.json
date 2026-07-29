@@ -1,0 +1,143 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "creation": "2026-07-29 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "employee_name",
+  "employee_number",
+  "identity_number",
+  "old_ic_number",
+  "new_ic_number",
+  "passport_number",
+  "country_code",
+  "tin",
+  "agency_number",
+  "wages",
+  "employee_amount",
+  "employer_amount",
+  "extra_employee_amount",
+  "mtd_amount",
+  "cp38_amount",
+  "rule_version",
+  "validation_status"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name"
+  },
+  {
+   "fieldname": "employee_number",
+   "fieldtype": "Data",
+   "label": "Employee / Salary Number",
+   "length": 10
+  },
+  {
+   "fieldname": "identity_number",
+   "fieldtype": "Data",
+   "label": "Identity Number"
+  },
+  {
+   "fieldname": "old_ic_number",
+   "fieldtype": "Data",
+   "label": "Old IC Number"
+  },
+  {
+   "fieldname": "new_ic_number",
+   "fieldtype": "Data",
+   "label": "New IC Number"
+  },
+  {
+   "fieldname": "passport_number",
+   "fieldtype": "Data",
+   "label": "Passport Number"
+  },
+  {
+   "fieldname": "country_code",
+   "fieldtype": "Data",
+   "label": "Country Code",
+   "length": 2
+  },
+  {
+   "fieldname": "tin",
+   "fieldtype": "Data",
+   "label": "TIN"
+  },
+  {
+   "fieldname": "agency_number",
+   "fieldtype": "Data",
+   "label": "Agency Number"
+  },
+  {
+   "fieldname": "wages",
+   "fieldtype": "Currency",
+   "label": "Wages",
+   "precision": "2"
+  },
+  {
+   "fieldname": "employee_amount",
+   "fieldtype": "Currency",
+   "label": "Employee Amount",
+   "precision": "2"
+  },
+  {
+   "fieldname": "employer_amount",
+   "fieldtype": "Currency",
+   "label": "Employer Amount",
+   "precision": "2"
+  },
+  {
+   "fieldname": "extra_employee_amount",
+   "fieldtype": "Currency",
+   "label": "Extra Employee Amount",
+   "precision": "2"
+  },
+  {
+   "fieldname": "mtd_amount",
+   "fieldtype": "Currency",
+   "label": "MTD Amount",
+   "precision": "2"
+  },
+  {
+   "fieldname": "cp38_amount",
+   "fieldtype": "Currency",
+   "label": "CP38 Amount",
+   "precision": "2"
+  },
+  {
+   "fieldname": "rule_version",
+   "fieldtype": "Data",
+   "label": "Rule Version"
+  },
+  {
+   "fieldname": "validation_status",
+   "fieldtype": "Data",
+   "label": "Validation Status"
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Malaysia Workforce",
+ "name": "Statutory Submission Employee",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "istable": 1,
+ "editable_grid": 1
+}
