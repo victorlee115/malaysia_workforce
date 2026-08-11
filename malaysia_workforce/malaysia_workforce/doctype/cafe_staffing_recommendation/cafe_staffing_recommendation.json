@@ -1,0 +1,24 @@
+{
+ "actions": [], "creation": "2026-08-11 00:00:00.000000", "doctype": "DocType", "editable_grid": 1, "engine": "InnoDB",
+ "field_order": ["recommendation_key","requirement_key","employee","work_date","start_time","end_time","duration_hours","designation","staffing_priority","rate_snapshot","manual_override","override_reason","employee_confirmation_status","employee_confirmation_evidence","shift_type","shift_assignment"],
+ "fields": [
+  {"fieldname":"recommendation_key","fieldtype":"Data","label":"Recommendation Key","read_only":1,"hidden":1,"no_copy":1},
+  {"fieldname":"requirement_key","fieldtype":"Data","label":"Requirement Key","read_only":1,"hidden":1,"no_copy":1},
+  {"fieldname":"employee","fieldtype":"Link","label":"Employee","options":"Employee","reqd":1,"in_list_view":1},
+  {"fieldname":"work_date","fieldtype":"Date","label":"Date","reqd":1,"in_list_view":1},
+  {"fieldname":"start_time","fieldtype":"Time","label":"Starts","reqd":1,"in_list_view":1},
+  {"fieldname":"end_time","fieldtype":"Time","label":"Ends","reqd":1,"in_list_view":1},
+  {"fieldname":"duration_hours","fieldtype":"Float","label":"Hours","precision":"2","read_only":1},
+  {"fieldname":"designation","fieldtype":"Link","label":"Designation","options":"Designation","reqd":1},
+  {"fieldname":"staffing_priority","fieldtype":"Select","label":"Priority Used","options":"Priority\nPreferred\nStandard","read_only":1},
+  {"fieldname":"rate_snapshot","fieldtype":"Currency","label":"Hourly Rate","precision":"2","read_only":1},
+  {"fieldname":"manual_override","fieldtype":"Check","label":"Manual Exception","default":"0"},
+  {"fieldname":"override_reason","fieldtype":"Small Text","label":"Exception Reason","depends_on":"manual_override"},
+  {"fieldname":"employee_confirmation_status","fieldtype":"Select","label":"Employee Confirmation","options":"Not Required\nPending\nAccepted\nDeclined","default":"Not Required"},
+  {"fieldname":"employee_confirmation_evidence","fieldtype":"Attach","label":"Confirmation Evidence","depends_on":"eval:doc.employee_confirmation_status=='Accepted'"},
+  {"fieldname":"shift_type","fieldtype":"Link","label":"Shift Type","options":"Shift Type","read_only":1},
+  {"fieldname":"shift_assignment","fieldtype":"Link","label":"Published Shift Assignment","options":"Shift Assignment","read_only":1}
+ ],
+ "istable": 1, "links": [], "modified": "2026-08-11 00:00:00.000000", "modified_by": "Administrator", "module": "Malaysia Workforce",
+ "name": "Cafe Staffing Recommendation", "owner": "Administrator", "permissions": [], "states": []
+}

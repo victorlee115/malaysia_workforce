@@ -12,11 +12,13 @@
   "contribution_year",
   "contribution_month",
   "revision",
+  "submission_key",
   "submission_mode",
   "status",
+  "payment_due_date",
   "schema_version",
   "portal_url",
-  "payroll_run",
+  "payroll_entry",
   "employee_lines",
   "source_salary_slips",
   "source_snapshot_hash",
@@ -64,7 +66,7 @@
    "fieldname": "authority",
    "fieldtype": "Select",
    "label": "Authority",
-   "options": "LHDN\nEPF\nPERKESO",
+   "options": "LHDN\nEPF\nPERKESO\nHRD Corp",
    "reqd": 1,
    "in_list_view": 1
   },
@@ -72,7 +74,7 @@
    "fieldname": "submission_type",
    "fieldtype": "Select",
    "label": "Submission Type",
-   "options": "Monthly PCB\nEPF Form A\nSOCSO EIS Combined\nCP8D Preparation\nForm E Preparation\nEmployee Notification\nAnnual Statement",
+   "options": "Monthly PCB\nEPF Form A\nSOCSO EIS Combined\nHRD Levy\nCP8D Preparation\nForm E Preparation\nEmployee Notification\nAnnual Statement",
    "reqd": 1
   },
   {
@@ -93,6 +95,14 @@
    "default": "0"
   },
   {
+   "fieldname": "submission_key",
+   "fieldtype": "Data",
+   "label": "Submission Uniqueness Key",
+   "read_only": 1,
+   "unique": 1,
+   "no_copy": 1
+  },
+  {
    "fieldname": "submission_mode",
    "fieldtype": "Select",
    "label": "Submission Mode",
@@ -108,10 +118,17 @@
    "in_list_view": 1
   },
   {
-   "fieldname": "payroll_run",
+   "fieldname": "payment_due_date",
+   "fieldtype": "Date",
+   "label": "Payment Due Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payroll_entry",
    "fieldtype": "Link",
-   "label": "Payroll Run",
-   "options": "Malaysia Payroll Run"
+   "label": "Payroll Entry",
+   "options": "Payroll Entry",
+   "read_only": 1
   },
   {
    "fieldname": "employee_lines",

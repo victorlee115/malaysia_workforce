@@ -14,6 +14,13 @@ class MalaysiaEmployeeProfile(Document):
 		employee_company = frappe.db.get_value("Employee", self.employee, "company")
 		if employee_company and self.company != employee_company:
 			frappe.throw(_("Malaysia Employee Profile company must match the Employee company."))
+		if employee_company and frappe.db.get_value("Company", employee_company, "custom_enable_malaysia_payroll"):
+			from malaysia_workforce.compliance.scope import allowed_nationalities
+
+			if self.nationality_status not in allowed_nationalities(employee_company):
+				frappe.throw(_("This nationality status is outside the Company's supported Malaysia payroll scope."))
+			if (self.tax_regime or "STANDARD") != "STANDARD":
+				frappe.throw(_("Only the STANDARD PCB tax regime is implemented and approved for production."))
 
 		self.nric_number = re.sub(r"[^0-9]", "", self.nric_number or "") or None
 		self.old_ic_number = (self.old_ic_number or "").strip().upper() or None
@@ -68,3 +75,9 @@ class MalaysiaEmployeeProfile(Document):
 			self.other_employment_declared,
 			update_modified=False,
 		)
+
+	def on_trash(self):
+		if frappe.db.exists("Salary Slip", {"employee": self.employee, "custom_malaysia_statutory_snapshot": ["is", "set"]}):
+			frappe.throw(_("A profile relied upon by statutory payroll snapshots cannot be deleted."))
+		if frappe.db.get_value("Employee", self.employee, "custom_malaysia_employee_profile") == self.name:
+			frappe.throw(_("Unlink or deactivate the Employee before deleting this Malaysia profile."))

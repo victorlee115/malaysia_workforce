@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import frappe
 from frappe import _
-from frappe.utils import get_first_day, get_last_day, getdate
+from frappe.utils import add_days, get_first_day, get_last_day, getdate
 
 from malaysia_workforce.data_access import (
 	get_malaysia_profile,
@@ -15,7 +15,14 @@ from malaysia_workforce.data_access import (
 	get_work_agreement,
 )
 from malaysia_workforce.payroll.accumulator import remove_salary_slip_from_accumulator, update_accumulator_from_salary_slip
-from malaysia_workforce.statutory.calculators import calculate_eis, calculate_epf, calculate_pcb, calculate_socso, determine_category
+from malaysia_workforce.statutory.calculators import (
+	calculate_eis,
+	calculate_epf,
+	calculate_hrd_levy,
+	calculate_pcb,
+	calculate_socso,
+	determine_category,
+)
 from malaysia_workforce.statutory.common import ContributionResult, PCBInput, ZERO, decimal, money, round_up_5_sen
 from malaysia_workforce.statutory.snapshot import parse_statutory_snapshot
 
@@ -49,6 +56,7 @@ def _component_metadata(names: set[str]) -> dict[str, dict]:
 			"custom_include_in_epf_wages",
 			"custom_include_in_socso_wages",
 			"custom_include_in_eis_wages",
+			"custom_include_in_hrd_levy_wages",
 			"custom_include_in_pcb_remuneration",
 			"custom_pcb_remuneration_type",
 		],
@@ -58,7 +66,7 @@ def _component_metadata(names: set[str]) -> dict[str, dict]:
 
 def _classify_earnings(doc) -> dict[str, Decimal]:
 	metadata = _component_metadata({row.salary_component for row in doc.earnings})
-	bases = {"gross": ZERO, "epf": ZERO, "socso": ZERO, "eis": ZERO, "pcb_regular": ZERO, "pcb_additional": ZERO}
+	bases = {"gross": ZERO, "epf": ZERO, "socso": ZERO, "eis": ZERO, "hrd": ZERO, "pcb_regular": ZERO, "pcb_additional": ZERO}
 	for row in doc.earnings:
 		amount = decimal(row.amount)
 		meta = metadata.get(row.salary_component, {})
@@ -70,6 +78,8 @@ def _classify_earnings(doc) -> dict[str, Decimal]:
 			bases["socso"] += amount
 		if meta.get("custom_include_in_eis_wages"):
 			bases["eis"] += amount
+		if meta.get("custom_include_in_hrd_levy_wages"):
+			bases["hrd"] += amount
 		if meta.get("custom_include_in_pcb_remuneration"):
 			remuneration_type = meta.get("custom_pcb_remuneration_type") or "Regular Remuneration"
 			if remuneration_type == "Regular Remuneration":
@@ -109,13 +119,13 @@ def _historical_context(doc, settings) -> dict:
 		},
 		fields=["name", "start_date", "end_date", "custom_malaysia_statutory_snapshot"],
 		order_by="end_date asc",
-		limit_page_length=500,
+		limit=500,
 	)
 	ctx = {
 		"prior_month": {"gross": ZERO, "epf_relief": ZERO, "mtd": ZERO, "zakat": ZERO},
-		"same_month_bases": {"gross": ZERO, "epf": ZERO, "socso": ZERO, "eis": ZERO, "pcb_regular": ZERO, "pcb_additional": ZERO},
+		"same_month_bases": {"gross": ZERO, "epf": ZERO, "socso": ZERO, "eis": ZERO, "hrd": ZERO, "pcb_regular": ZERO, "pcb_additional": ZERO},
 		"same_month_deductions": {"EPF": ZERO, "SOCSO": ZERO, "LINDUNG 24 Jam": ZERO, "EIS": ZERO, "PCB": ZERO},
-		"same_month_employer": {"EPF": ZERO, "SOCSO": ZERO, "EIS": ZERO},
+		"same_month_employer": {"EPF": ZERO, "SOCSO": ZERO, "EIS": ZERO, "HRD Corp": ZERO},
 	}
 	for slip in slips:
 		snapshot = _parse_snapshot(slip)
@@ -243,10 +253,71 @@ def _append_deduction(doc, component: str, amount: Decimal):
 	)
 
 
+def _validate_deductions_and_payment_deadline(doc) -> None:
+	component_names = {row.salary_component for row in doc.deductions if decimal(row.amount) > ZERO}
+	metadata = {}
+	if component_names:
+		metadata = {
+			row.name: row.custom_malaysia_deduction_basis
+			for row in frappe.get_all(
+				"Salary Component",
+				filters={"name": ["in", list(component_names)]},
+				fields=["name", "custom_malaysia_deduction_basis"],
+			)
+		}
+	invalid = [name for name in component_names if metadata.get(name) in {None, "", "Other / Unclassified"}]
+	if invalid:
+		frappe.throw(
+			_("Classify the legal authority for these deductions before payroll: {0}.").format(", ".join(sorted(invalid)))
+		)
+	evidence_bases = {"Employee Written Request", "Employer Recovery", "Final Employer Debt", "DG-Approved Housing Loan"}
+	if any(metadata.get(name) in evidence_bases for name in component_names) and not doc.custom_malaysia_deduction_evidence:
+		frappe.throw(_("Attach employee, debt, recovery or Director General evidence for the configured deductions."))
+
+	relieving_date = frappe.db.get_value("Employee", doc.employee, "relieving_date")
+	is_final = bool(relieving_date and getdate(doc.start_date) <= getdate(relieving_date) <= getdate(doc.end_date))
+	if is_final and not doc.custom_malaysia_final_pay_type:
+		frappe.throw(_("Select the Malaysia Final Pay Type when the Employee relieving date falls in this pay period."))
+	if not is_final and doc.custom_malaysia_final_pay_type:
+		frappe.throw(_("Malaysia Final Pay Type is only valid when the relieving date falls in this Salary Slip period."))
+
+	gross = money(sum((decimal(row.amount) for row in doc.earnings if not getattr(row, "statistical_component", 0)), ZERO))
+	deductions = money(sum((decimal(row.amount) for row in doc.deductions), ZERO))
+	exempt_final_debt = money(
+		sum(
+			(
+				decimal(row.amount)
+				for row in doc.deductions
+				if is_final and metadata.get(row.salary_component) == "Final Employer Debt"
+			),
+			ZERO,
+		)
+	)
+	capped = max(deductions - exempt_final_debt, ZERO)
+	cap_ratio = Decimal("0.75") if any(metadata.get(name) == "DG-Approved Housing Loan" for name in component_names) else Decimal("0.50")
+	if gross > ZERO and capped > money(gross * cap_ratio):
+		frappe.throw(
+			_("Capped deductions RM {0:.2f} exceed the reviewed {1:.0f}% wage limit.").format(
+				float(capped), float(cap_ratio * 100)
+			)
+		)
+
+	posting_date = getdate(doc.posting_date)
+	if is_final:
+		deadline = getdate(relieving_date)
+		if doc.custom_malaysia_final_pay_type == "Employee Termination Without Notice":
+			deadline = getdate(add_days(relieving_date, 3))
+	else:
+		deadline = getdate(add_days(doc.end_date, 7))
+	if posting_date > deadline:
+		frappe.throw(
+			_("Salary payment date {0} is after the reviewed statutory deadline {1}.").format(posting_date, deadline)
+		)
+
+
 def _is_final_pay_run(doc) -> bool:
-	run_name = getattr(doc, "custom_malaysia_payroll_run", None)
-	if run_name:
-		value = frappe.db.get_value("Malaysia Payroll Run", run_name, "is_final_run_for_month")
+	if getattr(doc, "payroll_entry", None):
+		value = frappe.db.get_value("Payroll Entry", doc.payroll_entry, "custom_malaysia_final_run")
 		if value is not None:
 			return bool(value)
 	return getdate(doc.end_date) >= getdate(get_last_day(doc.end_date))
@@ -258,14 +329,13 @@ def apply_malaysia_statutory_calculations(doc, method=None):
 	if not frappe.db.get_value("Company", doc.company, "custom_enable_malaysia_payroll"):
 		return
 	settings = _settings()
-	if settings.strict_rule_review and settings.rules_reviewed_through and getdate(doc.end_date) > getdate(settings.rules_reviewed_through):
-		frappe.throw(
-			_("Malaysia statutory rule review expired on {0}. Update Malaysia Workforce Settings before processing payroll.").format(settings.rules_reviewed_through)
-		)
+	from malaysia_workforce.compliance.scope import assert_rule_review_current
+
+	assert_rule_review_current(doc.company, doc.end_date)
 	profile = get_malaysia_profile(doc.employee, required=True)
 	agreement = get_work_agreement(doc.employee, doc.end_date, required=True)
 	if doc.payroll_entry:
-		doc.custom_malaysia_payroll_run = frappe.db.get_value("Payroll Entry", doc.payroll_entry, "custom_malaysia_payroll_run")
+		doc.custom_malaysia_payroll_entry = doc.payroll_entry
 
 	current = _classify_earnings(doc)
 	history = _historical_context(doc, settings)
@@ -335,6 +405,19 @@ def apply_malaysia_statutory_calculations(doc, method=None):
 	month_total_results.append(_result_dict(eis_total, eis_treatment))
 	current_results.append(_result_dict(eis_current, eis_treatment))
 
+	# HRD Corp is an employer-only levy. Registration and wage classification are
+	# explicit controls so the app never infers statutory coverage from payroll data.
+	company = frappe.get_cached_doc("Company", doc.company)
+	hrd_registered = bool(company.get("custom_hrd_corp_registered"))
+	hrd_total = calculate_hrd_levy(
+		month_bases["hrd"],
+		company.get("custom_hrd_levy_rate") or 1,
+		registered=hrd_registered,
+	)
+	hrd_current = _current_delta(hrd_total, ZERO, history["same_month_employer"]["HRD Corp"])
+	month_total_results.append(_result_dict(hrd_total, "Automatic" if hrd_registered else "Not Applicable"))
+	current_results.append(_result_dict(hrd_current, "Automatic" if hrd_registered else "Not Applicable"))
+
 	# PCB
 	pcb_applies, pcb_treatment, pcb_reason = _treatment(doc.employee, "PCB", doc.end_date, agreement)
 	declarations = _tax_declarations(doc.employee, doc.company, getdate(doc.end_date).year, getdate(doc.end_date).month)
@@ -399,6 +482,7 @@ def apply_malaysia_statutory_calculations(doc, method=None):
 	_append_deduction(doc, settings.skbbk_component, lindung_current.extra_employee)
 	_append_deduction(doc, settings.eis_component, eis_current.employee)
 	_append_deduction(doc, settings.pcb_component, pcb_current_result.employee)
+	_validate_deductions_and_payment_deadline(doc)
 
 	doc.set("custom_malaysia_statutory_results", [])
 	for result in current_results:
@@ -433,10 +517,30 @@ def freeze_statutory_snapshot(doc, method=None):
 		return
 	doc.db_set("custom_statutory_locked", 1, update_modified=False)
 	update_accumulator_from_salary_slip(doc)
-	from malaysia_workforce.payroll.events import maybe_finalize_run_after_salary_slip_submit
+	from malaysia_workforce.payroll.events import maybe_finalize_payroll_entry_after_salary_slip_submit
 
-	maybe_finalize_run_after_salary_slip_submit(doc)
+	maybe_finalize_payroll_entry_after_salary_slip_submit(doc)
 
 
 def reopen_accumulator(doc, method=None):
 	remove_salary_slip_from_accumulator(doc)
+
+
+def before_salary_slip_cancel(doc, method=None):
+	"""Prevent cancellation after payroll or authority evidence has been released."""
+	payroll_entry = getattr(doc, "payroll_entry", None)
+	if not payroll_entry:
+		return
+	state = frappe.db.get_value("Payroll Entry", payroll_entry, "custom_malaysia_control_state")
+	if state == "Released":
+		frappe.throw(_("A Salary Slip in a human-released Payroll Entry cannot be cancelled. Create a controlled adjustment."))
+	if frappe.db.exists(
+		"Statutory Submission",
+		{
+			"payroll_entry": payroll_entry,
+			"status": ["in", ["Submitted", "Accepted", "Rejected", "Paid", "Reconciled"]],
+		},
+	):
+		frappe.throw(
+			_("This Salary Slip is relied upon by authority submission evidence and cannot be cancelled. Create an amendment.")
+		)

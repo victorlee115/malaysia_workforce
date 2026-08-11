@@ -1,0 +1,28 @@
+{
+  "form": "PCB/TP1 (1/2026)",
+  "effective_year": 2026,
+  "reviewed_on": "2026-08-11",
+  "source": "https://www.hasil.gov.my/media/gjuhcbc2/bi-tp1-form-2026.pdf",
+  "retention_years": 7,
+  "reliefs": {
+    "C1": {"label": "Parents or grandparents medical, dental, special-needs and care expenses", "annual_limit": "8000", "evidence_required": true},
+    "C2": {"label": "Basic support equipment for a person with disabilities", "annual_limit": "6000", "evidence_required": true},
+    "C3": {"label": "Education fees for self", "annual_limit": "7000", "evidence_required": true},
+    "C4": {"label": "Qualifying medical expenses for self, spouse or child", "annual_limit": "10000", "evidence_required": true},
+    "C5": {"label": "Lifestyle expenses", "annual_limit": "2500", "evidence_required": true},
+    "C6": {"label": "Additional sports lifestyle expenses", "annual_limit": "1000", "evidence_required": true},
+    "C7": {"label": "Breastfeeding equipment", "annual_limit": "1000", "evidence_required": true},
+    "C8": {"label": "Registered childcare, kindergarten, day-care or transit fees", "annual_limit": "3000", "evidence_required": true},
+    "C9": {"label": "Net savings in the National Education Savings Scheme", "annual_limit": "8000", "evidence_required": true},
+    "C10": {"label": "Alimony payments to former wife", "annual_limit": "4000", "evidence_required": true},
+    "C11": {"label": "Voluntary EPF and life insurance", "annual_limit": "7000", "evidence_required": true, "requires_manual_sub_limit_review": true},
+    "C12": {"label": "Private retirement scheme and deferred annuity", "annual_limit": "3000", "evidence_required": true},
+    "C13": {"label": "Education and medical insurance", "annual_limit": "4000", "evidence_required": true},
+    "C14": {"label": "SOCSO and EIS contributions", "annual_limit": "350", "evidence_required": true},
+    "C15": {"label": "EV charging and qualifying household sustainability equipment", "annual_limit": "2500", "evidence_required": true, "requires_manual_frequency_review": true},
+    "C16A": {"label": "First-home loan interest for property up to RM500,000", "annual_limit": "7000", "evidence_required": true, "requires_manual_eligibility_review": true},
+    "C16B": {"label": "First-home loan interest for property above RM500,000 up to RM750,000", "annual_limit": "5000", "evidence_required": true, "requires_manual_eligibility_review": true},
+    "C17": {"label": "Domestic tourism, culture and arts entrance fees", "annual_limit": "1000", "evidence_required": true}
+  }
+}
+

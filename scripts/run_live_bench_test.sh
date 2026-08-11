@@ -36,6 +36,17 @@ if sys.version_info < (3, 14) or sys.version_info >= (3, 15):
 PY
 node -e 'const [m]=process.versions.node.split(".").map(Number); if(m<24){console.error(`Node >=24 required; found ${process.versions.node}`); process.exit(1)}'
 
+assert_app_commit() {
+    local app="$1"
+    local expected="$2"
+    local actual
+    actual="$(git -C "$BENCH_DIR/apps/$app" rev-parse --short=7 HEAD)"
+    [ "$actual" = "$expected" ] || fail "$app is at $actual; compatibility-lock.json requires $expected"
+}
+assert_app_commit frappe ba18090
+assert_app_commit erpnext ff46d20
+assert_app_commit hrms fe9ad9d
+
 step "Install/update Malaysia Workforce app source"
 if [ ! -d apps/malaysia_workforce ]; then
     bench get-app "$APP_SOURCE"
@@ -88,12 +99,10 @@ step "Run pure/static app test suite using the Bench virtual environment"
 
 step "Run live Frappe database/schema integration tests"
 bench --site "$SITE" run-tests --module malaysia_workforce.live_tests.test_installation
-
-step "Run installation readiness assertion"
-bench --site "$SITE" execute malaysia_workforce.diagnostics.assert_ready
+bench --site "$SITE" run-tests --module malaysia_workforce.live_tests.test_operational_scenarios
 
 if [ -n "$COMPANY" ]; then
-    step "Assert configured Malaysia company readiness"
+	step "Assert configured Malaysia company readiness"
     bench --site "$SITE" execute malaysia_workforce.diagnostics.assert_ready \
         --kwargs "{\"company\": \"$COMPANY\"}"
 fi

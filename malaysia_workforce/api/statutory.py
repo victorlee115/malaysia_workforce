@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import frappe
 from frappe import _
+from frappe.utils import add_months, getdate
 
+from malaysia_workforce.compliance.exceptions import create_assigned_exception
 from malaysia_workforce.forms.service import generate_annual_statements
 from malaysia_workforce.statutory.submission_service import generate_submission_file, populate_submission_lines
 from malaysia_workforce.utils import ensure_roles
@@ -41,23 +43,24 @@ def create_monthly_submissions(
 	company: str,
 	year: int,
 	month: int,
-	payroll_run: str | None = None,
+	payroll_entry: str | None = None,
 	revision: int = 0,
 ):
 	_ensure_permission()
 	_company(company)
 	if not 1 <= int(month) <= 12:
 		frappe.throw(_("Month must be between 1 and 12."))
-	if payroll_run:
-		run = frappe.get_doc("Malaysia Payroll Run", payroll_run)
-		run.check_permission("read")
-		if run.company != company:
-			frappe.throw(_("Payroll Run belongs to another Company."))
+	if payroll_entry:
+		entry = frappe.get_doc("Payroll Entry", payroll_entry)
+		entry.check_permission("read")
+		if entry.company != company:
+			frappe.throw(_("Payroll Entry belongs to another Company."))
 	created = []
 	for authority, submission_type in (
 		("LHDN", "Monthly PCB"),
 		("EPF", "EPF Form A"),
 		("PERKESO", "SOCSO EIS Combined"),
+		("HRD Corp", "HRD Levy"),
 	):
 		existing = frappe.db.get_value(
 			"Statutory Submission",
@@ -72,14 +75,37 @@ def create_monthly_submissions(
 			doc.contribution_year = int(year)
 			doc.contribution_month = int(month)
 			doc.revision = int(revision)
-			doc.payroll_run = payroll_run
-			doc.submission_mode = "File Upload"
+			doc.payroll_entry = payroll_entry
+			doc.submission_mode = "Portal Only" if authority in {"EPF", "HRD Corp"} else "File Upload"
 			doc.insert()
 		elif doc.status in {"Submitted", "Accepted", "Paid", "Reconciled"}:
 			frappe.throw(
 				_("Submission {0} is already frozen. Create the next revision.").format(doc.name)
 			)
+		else:
+			if payroll_entry and doc.payroll_entry and doc.payroll_entry != payroll_entry:
+				frappe.throw(
+					_("Submission {0} is already owned by Payroll Entry {1}.").format(
+						doc.name, doc.payroll_entry
+					)
+				)
+			changed = False
+			if payroll_entry and not doc.payroll_entry:
+				doc.payroll_entry = payroll_entry
+				changed = True
+			if changed:
+				doc.save()
 		populate_submission_lines(doc)
+		if submission_type == "HRD Levy":
+			doc.payment_due_date = getdate(add_months(f"{int(year):04d}-{int(month):02d}-01", 1)).replace(day=15)
+			doc.save()
+			create_assigned_exception(
+				code=f"HRDCORP-LEVY-PAYMENT-{int(year):04d}{int(month):02d}",
+				description=f"Review, release and pay HRD Corp levy submission {doc.name} by {doc.payment_due_date}.",
+				reference_type="Statutory Submission",
+				reference_name=doc.name,
+				due_date=doc.payment_due_date,
+			)
 		created.append(doc.name)
 	return created
 
@@ -112,7 +138,7 @@ def create_next_revision(submission: str):
 		"contribution_year",
 		"contribution_month",
 		"submission_mode",
-		"payroll_run",
+		"payroll_entry",
 	):
 		doc.set(fieldname, source.get(fieldname))
 	doc.revision = next_revision

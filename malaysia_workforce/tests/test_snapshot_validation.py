@@ -1,6 +1,6 @@
 import json
 
-import pytest
+from malaysia_workforce.tests._assertions import raises
 
 from malaysia_workforce.statutory.snapshot import parse_statutory_snapshot
 
@@ -34,17 +34,17 @@ def test_snapshot_accepts_valid_mapping_and_json():
 
 
 def test_snapshot_is_fail_closed_for_missing_or_malformed_values():
-	with pytest.raises(ValueError, match="empty"):
+	with raises(ValueError, match="empty"):
 		parse_statutory_snapshot(None)
 	payload = valid_snapshot()
 	del payload["current_wage_bases"]["epf"]
-	with pytest.raises(ValueError, match="missing wage bases"):
+	with raises(ValueError, match="missing wage bases"):
 		parse_statutory_snapshot(payload)
 	payload = valid_snapshot()
 	payload["current_results"][0]["employee_amount"] = "NaN"
-	with pytest.raises(ValueError, match="finite"):
+	with raises(ValueError, match="finite"):
 		parse_statutory_snapshot(payload)
 	payload = valid_snapshot()
 	payload["current_results"] = {"EPF": {}}
-	with pytest.raises(ValueError, match="must be a list"):
+	with raises(ValueError, match="must be a list"):
 		parse_statutory_snapshot(payload)

@@ -1,0 +1,37 @@
+{
+  "reviewed_on": "2026-08-11",
+  "sources": [
+    "https://jtksm.mohr.gov.my/sites/default/files/2022-11/akta_kerja1955_bi.pdf",
+    "https://jtksm.mohr.gov.my/sites/default/files/2023-03/10.%20Employment%20-%20Part-time%20Employees%20-%20Regulations%202010%20%20%281%29.pdf"
+  ],
+  "rules": [
+    {
+      "classification": "PART_TIME_REGULATIONS_2010",
+      "effective_from": "2010-10-01",
+      "version": "MW-PART-TIME-PAY-2010-R2026.1",
+      "ordinary_multiplier": "1",
+      "additional_multiplier": "1",
+      "overtime_multiplier": "1.5",
+      "rest_normal_multiplier": "2",
+      "rest_additional_multiplier": "1.5",
+      "rest_overtime_multiplier": "2",
+      "public_holiday_normal_multiplier": "3",
+      "public_holiday_additional_multiplier": "2",
+      "public_holiday_overtime_multiplier": "3"
+    },
+    {
+      "classification": "CASUAL_CONTRACT_RATE",
+      "effective_from": "2010-10-01",
+      "version": "MW-CASUAL-CONTRACT-PAY-R2026.1",
+      "ordinary_multiplier": "1",
+      "additional_multiplier": "1",
+      "overtime_multiplier": "1.5",
+      "rest_normal_multiplier": "2",
+      "rest_additional_multiplier": "1.5",
+      "rest_overtime_multiplier": "2",
+      "public_holiday_normal_multiplier": "3",
+      "public_holiday_additional_multiplier": "2",
+      "public_holiday_overtime_multiplier": "3"
+    }
+  ]
+}

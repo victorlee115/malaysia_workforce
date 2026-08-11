@@ -2,12 +2,12 @@
 
 ## Supported versions
 
-This release deliberately refuses installation outside Frappe major version 16. Install matching version-16 branches of Frappe, ERPNext and Frappe HR before installing this app.
+This release deliberately refuses installation outside Frappe major version 16. The certification candidate is pinned in `compatibility-lock.json`; do not call another patch set production-tested until the live matrix is repeated.
 
 Recommended prerequisites:
 
 - a current supported Frappe v16 deployment;
-- MariaDB/PostgreSQL, Redis, Node and Python versions required by that Frappe release;
+- MariaDB 11.4, Python 3.14 and Node 24 for the tested candidate, plus the Redis version supported by the pinned Frappe stack;
 - HTTPS, background workers and scheduler enabled;
 - a recent database and sites backup;
 - a separate staging site with anonymised or controlled payroll test data.
@@ -16,7 +16,7 @@ Recommended prerequisites:
 
 ```bash
 cd /path/to/frappe-bench
-unzip malaysia_workforce-1.0.0-rc.4.zip -d /tmp
+unzip malaysia_workforce-1.0.0-rc.7.zip -d /tmp
 mv /tmp/malaysia_workforce apps/malaysia_workforce
 ./env/bin/pip install -e apps/malaysia_workforce
 bench --site staging.example.com install-app malaysia_workforce
@@ -49,7 +49,7 @@ Installation and migration are idempotent. They create or update:
 
 - Malaysia Workforce DocTypes and Workspace;
 - custom fields on Employee, Company, Salary Component, Shift Assignment, Shift Type, Employee Checkin, Additional Salary, Salary Slip, Payroll Entry and Journal Entry;
-- five application roles;
+- seven application roles, including a desk-disabled kiosk role;
 - casual/part-time Employment Types;
 - Malaysian payroll Salary Components;
 - preparation Print Formats.
@@ -58,7 +58,7 @@ The installer does not create company-specific accounts, statutory numbers, empl
 
 ## Scheduler and workers
 
-The app uses Frappe background workers and scheduler jobs for roster closing, reminders, standby expiration, attendance reconciliation, compliance checks and accumulator rebuilds. Ensure scheduler and workers are healthy:
+The app uses Frappe background workers and scheduler jobs for availability cutoffs, reminders, stale proposals, expired priorities, attendance reconciliation, compliance checks and accumulator rebuilds. Ensure scheduler and workers are healthy:
 
 ```bash
 bench --site staging.example.com enable-scheduler

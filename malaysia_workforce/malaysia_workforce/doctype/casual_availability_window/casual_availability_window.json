@@ -1,0 +1,12 @@
+{
+ "actions": [], "creation": "2026-08-11 00:00:00.000000", "doctype": "DocType",
+ "editable_grid": 1, "engine": "InnoDB",
+ "field_order": ["work_date", "available_from", "available_until"],
+ "fields": [
+  {"fieldname":"work_date","fieldtype":"Date","label":"Date","reqd":1,"in_list_view":1},
+  {"fieldname":"available_from","fieldtype":"Time","label":"Available From","reqd":1,"in_list_view":1},
+  {"fieldname":"available_until","fieldtype":"Time","label":"Available Until","reqd":1,"in_list_view":1}
+ ],
+ "istable": 1, "links": [], "modified": "2026-08-11 00:00:00.000000", "modified_by": "Administrator",
+ "module": "Malaysia Workforce", "name": "Casual Availability Window", "owner": "Administrator", "permissions": [], "states": []
+}

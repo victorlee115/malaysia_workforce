@@ -1,0 +1,26 @@
+{
+ "actions": [], "allow_import": 1, "autoname": "naming_series:", "creation": "2026-08-11 00:00:00.000000",
+ "doctype": "DocType", "engine": "InnoDB",
+ "field_order": ["naming_series","template_name","enabled","company","branch","shift_location","effective_from","effective_until","coverage_rows","notes"],
+ "fields": [
+  {"fieldname":"naming_series","fieldtype":"Select","label":"Series","options":"MW-COV-.YYYY.-.#####","default":"MW-COV-.YYYY.-.#####","reqd":1,"hidden":1},
+  {"fieldname":"template_name","fieldtype":"Data","label":"Template Name","reqd":1,"in_list_view":1},
+  {"fieldname":"enabled","fieldtype":"Check","label":"Enabled","default":"1","in_list_view":1},
+  {"fieldname":"company","fieldtype":"Link","label":"Company","options":"Company","reqd":1,"in_list_view":1},
+  {"fieldname":"branch","fieldtype":"Link","label":"Branch","options":"Branch"},
+  {"fieldname":"shift_location","fieldtype":"Link","label":"Shift Location","options":"Shift Location"},
+  {"fieldname":"effective_from","fieldtype":"Date","label":"Effective From","reqd":1},
+  {"fieldname":"effective_until","fieldtype":"Date","label":"Effective Until"},
+  {"fieldname":"coverage_rows","fieldtype":"Table","label":"Weekly Coverage","options":"Cafe Coverage Row","reqd":1},
+  {"fieldname":"notes","fieldtype":"Small Text","label":"Planning Notes"}
+ ],
+ "links": [], "modified": "2026-08-11 00:00:00.000000", "modified_by": "Administrator", "module": "Malaysia Workforce",
+ "name": "Cafe Coverage Template", "owner": "Administrator",
+ "permissions": [
+  {"role":"System Manager","read":1,"create":1,"write":1,"delete":1,"report":1,"export":1,"print":1,"email":1,"share":1},
+  {"role":"HR Manager","read":1,"create":1,"write":1,"delete":1,"report":1,"export":1,"print":1,"email":1,"share":1},
+  {"role":"Malaysia HR Manager","read":1,"create":1,"write":1,"delete":1,"report":1,"export":1,"print":1,"email":1,"share":1},
+  {"role":"Outlet Manager","read":1,"create":1,"write":1,"delete":1,"report":1,"export":1,"print":1,"email":1,"share":1}
+ ],
+ "sort_field": "effective_from", "sort_order": "DESC", "states": [], "title_field": "template_name", "track_changes": 1
+}

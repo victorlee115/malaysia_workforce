@@ -41,6 +41,11 @@ class ShiftPayInput:
 	paid_break_minutes: int = 0
 	normal_part_time_daily_hours: Decimal = ZERO
 	comparable_full_time_daily_hours: Decimal = Decimal("8")
+	work_arrangement: str = "Part Time"
+	pay_basis: str = "Hourly"
+	regularity: str = "Regular Variable"
+	normal_weekly_hours: Decimal = Decimal("22.5")
+	comparable_full_time_weekly_hours: Decimal = Decimal("45")
 	is_rest_day: bool = False
 	is_public_holiday: bool = False
 
@@ -126,7 +131,23 @@ def _quantized_hours(seconds: Decimal) -> Decimal:
 
 
 def calculate_shift_pay(args: ShiftPayInput, rule: PayRule | None = None) -> ShiftPayResult:
-	rule = rule or PayRule()
+	from malaysia_workforce.payroll.rules import pay_rule_for_date, validate_flexible_worker_classification
+
+	rule_profile = validate_flexible_worker_classification(
+		work_arrangement=args.work_arrangement,
+		pay_basis=args.pay_basis,
+		regularity=args.regularity,
+		normal_weekly_hours=decimal(args.normal_weekly_hours),
+		comparable_full_time_weekly_hours=decimal(args.comparable_full_time_weekly_hours),
+	)
+	if rule is None:
+		rule_data = pay_rule_for_date(args.actual_start.date(), rule_profile)
+		rule_version = rule_data.pop("version")
+		rule_data.pop("classification")
+		rule_data.pop("effective_from")
+		rule = PayRule(**{key: decimal(value) for key, value in rule_data.items()})
+	else:
+		rule_version = f"{PAY_ENGINE_VERSION}-EXPLICIT-RULE"
 	if args.actual_end <= args.actual_start:
 		raise ValueError("Actual end must be after actual start")
 	if args.unpaid_break_minutes < 0 or args.paid_break_minutes < 0:
@@ -155,6 +176,10 @@ def calculate_shift_pay(args: ShiftPayInput, rule: PayRule | None = None) -> Shi
 		HOUR_QUANTUM, rounding=ROUND_HALF_UP
 	)
 	overtime = max(payable - ordinary - additional, ZERO).quantize(HOUR_QUANTUM, rounding=ROUND_HALF_UP)
+	if rule_profile == "CASUAL_CONTRACT_RATE" and (args.is_public_holiday or args.is_rest_day or additional or overtime):
+		raise ValueError(
+			"Casual contract-rate shifts with rest-day, public-holiday or excess hours require HR Manager review"
+		)
 
 	if args.is_public_holiday:
 		multipliers = (
@@ -207,4 +232,5 @@ def calculate_shift_pay(args: ShiftPayInput, rule: PayRule | None = None) -> Shi
 		overtime_hours=overtime,
 		gross_pay=pay_money(sum((line.amount for line in lines), ZERO)),
 		lines=tuple(lines),
+		version=rule_version,
 	)

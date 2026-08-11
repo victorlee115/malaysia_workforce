@@ -1,4 +1,6 @@
-# ERPNext live-test environment report — Malaysia Workforce RC3
+# Historical ERPNext live-test environment report — Malaysia Workforce RC3
+
+This file records the RC3 environment only. It is not the RC7 validation result; see `RELEASE_VALIDATION.md` for the current candidate.
 
 **Date:** 29 July 2026  
 **Requested:** Start ERPNext and test the Malaysia Workforce app fully.

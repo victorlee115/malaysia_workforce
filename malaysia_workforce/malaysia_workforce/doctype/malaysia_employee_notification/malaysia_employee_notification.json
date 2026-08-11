@@ -9,15 +9,21 @@
   "employee",
   "company",
   "form_type",
+  "event_type",
   "trigger_date",
   "due_date",
   "cessation_date",
   "departure_date",
+  "death_date",
+  "last_working_day",
   "reason",
   "amount_withheld",
+  "withholding_required",
+  "withholding_until",
   "status",
   "submission_reference",
   "submitted_on",
+  "acknowledgement",
   "payload_snapshot"
  ],
  "fields": [
@@ -49,9 +55,16 @@
    "fieldname": "form_type",
    "fieldtype": "Select",
    "label": "Form Type",
-   "options": "CP21\nCP22\nCP22A\nCP22B",
+   "options": "CP21\nCP22\nCP22A",
    "reqd": 1,
    "in_list_view": 1
+  },
+  {
+   "fieldname": "event_type",
+   "fieldtype": "Select",
+   "label": "Notification Event",
+   "options": "Commencement\nCessation\nDeath\nDeparture",
+   "reqd": 1
   },
   {
    "fieldname": "trigger_date",
@@ -75,6 +88,16 @@
    "label": "Departure Date"
   },
   {
+   "fieldname": "death_date",
+   "fieldtype": "Date",
+   "label": "Date of Death"
+  },
+  {
+   "fieldname": "last_working_day",
+   "fieldtype": "Date",
+   "label": "Last Working Day"
+  },
+  {
    "fieldname": "reason",
    "fieldtype": "Small Text",
    "label": "Reason"
@@ -84,6 +107,17 @@
    "fieldtype": "Currency",
    "label": "Amount Withheld",
    "precision": "2"
+  },
+  {
+   "fieldname": "withholding_required",
+   "fieldtype": "Check",
+   "label": "Withhold Monies Pending Tax Clearance",
+   "default": "0"
+  },
+  {
+   "fieldname": "withholding_until",
+   "fieldtype": "Date",
+   "label": "Withhold Until"
   },
   {
    "fieldname": "status",
@@ -102,6 +136,11 @@
    "fieldname": "submitted_on",
    "fieldtype": "Datetime",
    "label": "Submitted On"
+  },
+  {
+   "fieldname": "acknowledgement",
+   "fieldtype": "Attach",
+   "label": "Submission Acknowledgement"
   },
   {
    "fieldname": "payload_snapshot",
@@ -159,7 +198,6 @@
    "read": 1,
    "create": 1,
    "write": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -171,7 +209,6 @@
    "read": 1,
    "create": 1,
    "write": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,

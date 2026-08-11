@@ -1,73 +1,55 @@
 # Release validation report
 
-**Release:** 1.0.0-rc.4  
-**Validation date:** 2026-07-29  
-**Target:** Frappe 16 / ERPNext 16 / Frappe HR 16 / Python 3.14 / Node 24
+**Release:** 1.0.0-rc.7
 
-## Completed in this build environment
+**Validation date:** 2026-08-12
 
-- 56 pure calculation, exporter, template, JSON, validation and source-contract tests passed.
-- Every Python source file compiled successfully.
-- Every JSON file parsed successfully and custom DocType field contracts were checked.
-- Every JavaScript file passed `node --check` using the available Node 22 parser; runtime metadata requires Node 24 for the target bench.
-- Internal Python imports, hook targets, scheduler targets, patch modules and JavaScript API targets resolved statically.
+**Target candidate:** Frappe 16.19.0 / ERPNext 16.20.0 / HRMS 16.7.1 / Python 3.14 / Node 24 / MariaDB 11.4
+
+## Completed
+
+- All Python sources compiled, all checked JavaScript passed syntax validation and the pure suite passed 62 tests.
+- A clean MariaDB site installed the exact pinned framework apps followed by Malaysia Workforce.
+- The complete live app suite passed eight tests on MariaDB 11.4.12.
+- Two consecutive migrations, the app asset build and pinned-stack diagnostics passed.
+- MariaDB was verified as `REPEATABLE-READ` with `utf8mb4` / `utf8mb4_unicode_ci`.
+- Dependency repositories remained clean; the app uses hooks, custom fields, fixtures and standard client extensions only.
+- Chrome acceptance passed for employee, outlet manager, payroll processor, HR Manager releaser and auditor roles.
+- A standard Payroll Entry produced and submitted a standard Salary Slip with Malaysian statutory deductions and an idempotent UAT-only bank artifact.
+- Human release correctly stopped at the unsigned company production-activation gate.
 - Statutory source-table hashes matched `source_manifest.json`.
-- Release metadata and file-manifest checks passed.
-- Generated cache files, bytecode and test caches were removed from the release archive.
 
-## Security and correctness defects corrected during the audit
+See `ISOLATED_E2E_TEST_REPORT.md` for role-by-role evidence and exact environment details.
 
-The earlier source was not accepted unchanged. RC3 includes the RC2 corrections and additionally addresses:
+## RC7 architecture and controls
 
-- a legacy EPF CSV header mismatch (`Wages` instead of the guide's `Salary`);
-- the retired e-Caruman serializer being mislabelled as a current i-Akaun schema;
-- migration overwriting administrator-reviewed statutory wage classifications;
-- unmanaged Salary Components being silently adopted under reserved names;
-- roster `required_skill` fields not being enforced against Frappe HR's standard Employee Skill Map;
-- unescaped server error messages in portal notification dialogs;
-- missing duplicate-key JSON and Jinja template syntax tests.
-- Bootstrap 5-only modal calls in the employee portal even though Frappe v16 ships Bootstrap 4.6.
-- split shifts being offered even when Frappe HR would reject multiple same-date Shift Assignments.
+RC7 keeps standard Frappe HR authoritative and removes the former duplicate roster and payroll-run surfaces. Malaysia Workforce now supplies only native availability, coverage planning, deterministic casual allocation, Malaysian rules and evidence/release controls around standard Shift Assignment, Employee Checkin, Attendance, Payroll Entry and Salary Slip records.
 
-RC2 had already corrected cross-company roster access, duplicate payroll claiming, premature statutory finalisation, unapproved time payment, Shift Assignment conflicts, malformed snapshot handling, employer-journal failures, TP1/TP3 validation, exporter numeric/encoding controls and unsafe master-data collisions.
+Separated standard permissions let payroll processors operate Payroll Entry while releasers and auditors remain read-only. Client actions mirror the server roles: processors prepare Malaysia inputs and bank files; HR Managers release and reconcile; auditors receive no mutating action. Frappe's own submitted-document probe is skipped for read-only viewers instead of granting them unsafe submit permission.
 
-See `docs/CODE_AUDIT_AND_TEST_REPORT.md` for detail.
+The availability and Staffing Plan screens use standard Frappe Web Form, Desk Form, Workflow, List View, Workspace and Query Report patterns. Published schedules are ordinary HRMS shifts and are viewed in the normal HRMS roster/PWA.
 
 ## Statutory calculation checks
 
-The suite includes the bundled LHDN PCB worked-example targets:
+The Python 3.14 suite passes the bundled LHDN PCB worked-example targets:
 
 | Case | Expected | Result |
-|---|---:|---:|
+| --- | ---: | --- |
 | January normal remuneration | RM110.00 | Pass |
 | February cumulative | RM110.00 | Pass |
 | March with TP1 relief | RM108.20 | Pass |
 | April with bonus/additional remuneration | RM833.70 | Pass |
 
-It also checks EPF, SOCSO/LINDUNG and EIS schedule lookups, pay-band calculations, LHDN record lengths, legacy EPF CSV constraints, PERKESO 278-character records, Jinja syntax, duplicate JSON keys, invalid numeric input and malformed statutory snapshots.
+The suite also checks EPF, SOCSO/LINDUNG, EIS, HRD levy, minimum wage, flexible-worker pay boundaries, TP1 controls, effective dates, statutory record constraints, malformed snapshots and invalid numeric input.
 
-## Not completed in this build environment
+## External production blocks
 
-No operational Frappe/ERPNext/HRMS bench, MariaDB/PostgreSQL, Redis worker, browser or authority test account was available. Consequently, RC3 is **not represented as production-certified**. The following remain mandatory on the customer's staging environment:
+No production bank or employer authority credentials can be selected from repository context. Company activation therefore rejects the generic UAT CSV and requires an installed bank-specific adapter plus acceptance evidence. EPF uses a current i-Akaun preparation worksheet; the retired e-Caruman artifact remains UAT-only.
 
-- fresh installation and repeated migration on the exact v16 deployment;
-- live permission tests with at least two companies and separate employees/managers;
-- database concurrency tests with multiple workers;
-- end-to-end roster, check-in, attendance, Additional Salary, Payroll Entry, Salary Slip and Journal Entry testing;
-- scheduler, queue retry and cancellation testing;
-- browser/PWA and mobile-device testing;
-- portal acceptance of LHDN, EPF and PERKESO files;
-- parallel payroll and Malaysian payroll-practitioner sign-off;
-- security review using the deployment's authentication, reverse proxy and retention settings.
+Foreign workers, Sabah, Sarawak and unsupported PCB regimes fail closed. Full-time/monthly payroll remains standard Frappe HR; custom flexible-work pay is limited to reviewed hourly part-time/casual agreements.
 
-## EPF production block
-
-The old e-Caruman CSV serializer is retained only to support isolated comparison/UAT. It is disabled by default, uses schema identifier `KWSP-ECARUMAN-LEGACY-CSV-UNVERIFIED`, is never marked portal-ready and cannot be recorded as an official submission. A current verified i-Akaun adapter remains a production gate.
-
-## Known RC3 boundaries
-
-The standby DocType, permissions, validation and expiry job are present. Automatic sequential creation of standby offers and cascading to the next worker after decline/timeout are not implemented in RC3 and must not be described as operational until added and live-tested.
+Production still requires bank/authority UAT, two parallel payroll periods, an off-cycle or year-boundary simulation, recovery/security/concurrency drills, the configured standard HRMS lifecycle tests and specialist sign-off.
 
 ## Release decision
 
-RC3 is approved only as a **staging/UAT release candidate**. Production use requires every gate in `docs/VALIDATION.md` to pass.
+RC7 is approved as a **MariaDB-tested staging/UAT release candidate**. It is not production activated until every gate in `VALIDATION.md` and the signed Company activation checklist passes.

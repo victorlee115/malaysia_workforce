@@ -42,11 +42,10 @@ def _reliefs(args: PCBInput) -> Decimal:
 def _band_tax(chargeable_income: Decimal, category: int, tax_regime: str) -> Decimal:
 	p = max(truncate(chargeable_income), ZERO)
 	regime = (tax_regime or "STANDARD").upper()
-	if regime in {"REP", "KNOWLEDGE_WORKER", "C_SUITE", "FLAT_15"}:
-		if p <= Decimal("35000"):
-			rebate = Decimal("800") if category == 2 else Decimal("400")
-			return max(truncate(p * Decimal("0.15") - rebate), ZERO)
-		return truncate(p * Decimal("0.15"))
+	if regime != "STANDARD":
+		raise ValueError(
+			f"PCB tax regime {regime} is not implemented with reviewed eligibility and effective-date rules"
+		)
 	if p <= Decimal("5000"):
 		return ZERO
 	for lower, upper, m, rate, b13, b2 in TAX_BANDS:
@@ -96,6 +95,10 @@ def calculate_pcb(args: PCBInput) -> PCBResult:
 		raise ValueError("PCB month must be between 1 and 12")
 	if args.category not in {1, 2, 3}:
 		raise ValueError("PCB category must be 1, 2 or 3")
+	if (args.tax_regime or "STANDARD").upper() != "STANDARD":
+		raise ValueError(
+			f"PCB tax regime {(args.tax_regime or '').upper()} is not implemented with reviewed eligibility and effective-date rules"
+		)
 
 	if not args.resident:
 		taxable = max(

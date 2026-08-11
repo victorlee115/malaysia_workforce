@@ -30,11 +30,12 @@ def generate_document_pdf(doctype: str, name: str) -> bytes:
 
 def create_employee_notification(employee: str, form_type: str, trigger_date, **values):
 	ensure_roles("Malaysia HR Manager", "HR Manager", "HR User", "System Manager")
-	if form_type not in {"CP21", "CP22", "CP22A", "CP22B"}:
+	if form_type not in {"CP21", "CP22", "CP22A"}:
 		frappe.throw(_("Unsupported employee notification form."))
 	company = frappe.db.get_value("Employee", employee, "company")
 	if not company:
 		frappe.throw(_("Employee {0} does not exist.").format(employee))
+	frappe.get_doc("Employee", employee).check_permission("read")
 	trigger_date = getdate(trigger_date)
 	existing = frappe.db.get_value(
 		"Malaysia Employee Notification",
@@ -54,11 +55,26 @@ def create_employee_notification(employee: str, form_type: str, trigger_date, **
 	doc.company = company
 	doc.form_type = form_type
 	doc.trigger_date = trigger_date
-	# CP22 is normally due after commencement; cessation/departure notifications are
-	# prepared against the advance-notice date. The administrator remains responsible
-	# for checking the current official deadline before submission.
-	doc.due_date = add_days(trigger_date, 30) if form_type == "CP22" else add_days(trigger_date, -30)
-	for key in ("cessation_date", "departure_date", "reason", "amount_withheld"):
+	event_type = values.get("event_type") or {"CP22": "Commencement", "CP21": "Departure"}.get(
+		form_type, "Cessation"
+	)
+	doc.event_type = event_type
+	if form_type == "CP22":
+		doc.due_date = add_days(trigger_date, 30)
+	elif form_type == "CP22A" and event_type == "Death":
+		doc.due_date = add_days(trigger_date, 30)
+	else:
+		doc.due_date = add_days(trigger_date, -30)
+	for key in (
+		"cessation_date",
+		"departure_date",
+		"death_date",
+		"last_working_day",
+		"reason",
+		"amount_withheld",
+		"withholding_required",
+		"withholding_until",
+	):
 		if key in values:
 			setattr(doc, key, values[key])
 	doc.insert()
@@ -77,6 +93,10 @@ def generate_annual_statements(company: str, tax_year: int) -> list[str]:
 		"Malaysia HR Manager",
 		"System Manager",
 	)
+	frappe.get_doc("Company", company).check_permission("read")
+	from malaysia_workforce.compliance.scope import assert_rule_review_current
+
+	assert_rule_review_current(company, f"{int(tax_year)}-12-31")
 	start, end = getdate(f"{tax_year}-01-01"), getdate(f"{tax_year}-12-31")
 	slips = frappe.get_all(
 		"Salary Slip",
@@ -87,7 +107,7 @@ def generate_annual_statements(company: str, tax_year: int) -> list[str]:
 			"custom_malaysia_statutory_snapshot": ["is", "set"],
 		},
 		fields=["employee", "custom_malaysia_statutory_snapshot"],
-		limit_page_length=50000,
+		limit=50000,
 	)
 	data = defaultdict(lambda: defaultdict(lambda: Decimal("0")))
 	for slip in slips:
@@ -113,11 +133,15 @@ def generate_annual_statements(company: str, tax_year: int) -> list[str]:
 
 	created: list[str] = []
 	for employee, totals in data.items():
-		name = frappe.db.get_value(
+		existing = frappe.get_all(
 			"Malaysia Annual Remuneration Statement",
-			{"employee": employee, "company": company, "tax_year": tax_year, "form_type": "EA"},
-			"name",
+			filters={"employee": employee, "company": company, "tax_year": tax_year, "form_type": "EA"},
+			fields=["name", "revision", "status"],
+			order_by="revision desc, creation desc",
+			limit=1,
 		)
+		latest = existing[0] if existing else None
+		name = latest.name if latest and latest.status not in {"Issued", "Corrected"} else None
 		doc = (
 			frappe.get_doc("Malaysia Annual Remuneration Statement", name)
 			if name
@@ -128,12 +152,7 @@ def generate_annual_statements(company: str, tax_year: int) -> list[str]:
 			doc.company = company
 			doc.tax_year = tax_year
 			doc.form_type = "EA"
-		elif doc.status == "Issued":
-			frappe.throw(
-				_(
-					"Annual statement {0} has already been issued. Create a corrected revision instead of overwriting it."
-				).format(doc.name)
-			)
+			doc.revision = int(latest.revision or 0) + 1 if latest else 0
 		doc.gross_remuneration = totals["gross"]
 		doc.epf_employee = totals["epf"]
 		doc.socso_employee = totals["socso"]
@@ -150,10 +169,10 @@ def generate_annual_statements(company: str, tax_year: int) -> list[str]:
 	return created
 
 
-def _parse_rows(value) -> list[dict]:
+def _parse_rows(value, tax_year: int) -> list[dict]:
 	rows = frappe.parse_json(value) if isinstance(value, str) else value
 	try:
-		return validate_tp1_rows(rows)
+		return validate_tp1_rows(rows, tax_year=tax_year)
 	except ValueError as exc:
 		frappe.throw(_(str(exc)))
 
@@ -176,7 +195,7 @@ def employee_submit_tp1(tax_year: int, relief_claims: str | list[dict], declarat
 	doc.tax_year = year
 	doc.status = "Submitted by Employee"
 	doc.employee_declaration = 1
-	for row in _parse_rows(relief_claims):
+	for row in _parse_rows(relief_claims, year):
 		doc.append("relief_claims", row)
 	doc.insert(ignore_permissions=True)
 	return doc.name

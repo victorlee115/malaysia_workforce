@@ -1,0 +1,28 @@
+{
+  "stack": "Frappe v16",
+  "runtime": {
+    "python": "3.14",
+    "node": "24",
+    "database": "MariaDB 11.4"
+  },
+  "apps": {
+    "frappe": {
+      "version": "16.19.0",
+      "git_tag": "v16.19.0",
+      "commit": "ba18090"
+    },
+    "erpnext": {
+      "version": "16.20.0",
+      "git_tag": "v16.20.0",
+      "commit": "ff46d20"
+    },
+    "hrms": {
+      "version": "16.7.1",
+      "git_tag": "v16.7.1",
+      "commit": "fe9ad9d"
+    }
+  },
+  "reviewed_on": "2026-08-12",
+  "certification_status": "isolated-mariadb-pass-external-uat-required",
+  "notes": "The exact app stack passed clean install, repeated migration, live workflows and Chrome role acceptance on MariaDB 11.4.12. Production activation remains blocked until parallel payroll, bank/authority UAT, recovery drills and specialist sign-off pass."
+}

@@ -1,0 +1,51 @@
+{
+ "actions": [],
+ "allow_import": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-08-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series", "employee", "company", "cycle_start", "cycle_end", "availability_key",
+  "status", "submitted_on", "workflow_state", "manager_review_status", "late_amendment", "amendment_reason",
+  "availability_windows", "employee_notes", "audit_section", "source_snapshot_hash", "amended_from"
+ ],
+ "fields": [
+  {"fieldname":"naming_series","fieldtype":"Select","label":"Series","options":"MW-AVL-.YYYY.-.#####","default":"MW-AVL-.YYYY.-.#####","reqd":1,"hidden":1},
+  {"fieldname":"employee","fieldtype":"Link","label":"Employee","options":"Employee","reqd":1,"in_list_view":1},
+  {"fieldname":"company","fieldtype":"Link","label":"Company","options":"Company","fetch_from":"employee.company","read_only":1,"reqd":1},
+  {"fieldname":"cycle_start","fieldtype":"Date","label":"Cycle Starts","reqd":1,"in_list_view":1},
+  {"fieldname":"cycle_end","fieldtype":"Date","label":"Cycle Ends","reqd":1,"read_only":1},
+  {"fieldname":"availability_key","fieldtype":"Data","label":"Availability Key","read_only":1,"hidden":1,"unique":1,"no_copy":1},
+  {"fieldname":"status","fieldtype":"Select","label":"Status","options":"Submitted\nClosed","default":"Submitted","read_only":1,"in_list_view":1},
+  {"fieldname":"submitted_on","fieldtype":"Datetime","label":"Submitted On","read_only":1,"in_list_view":1},
+  {"fieldname":"workflow_state","fieldtype":"Link","label":"Review Workflow State","options":"Workflow State","default":"Draft","read_only":1,"hidden":1},
+  {"fieldname":"manager_review_status","fieldtype":"Select","label":"Manager Review","options":"Not Required\nPending\nApproved\nRejected","default":"Not Required","read_only":1},
+  {"fieldname":"late_amendment","fieldtype":"Check","label":"Late Amendment","default":"0","read_only":1},
+  {"fieldname":"amendment_reason","fieldtype":"Small Text","label":"Reason for Late Change","depends_on":"late_amendment"},
+  {"fieldname":"availability_windows","fieldtype":"Table","label":"When I Can Work","options":"Casual Availability Window","reqd":1},
+  {"fieldname":"employee_notes","fieldtype":"Small Text","label":"Notes for the Manager"},
+  {"fieldname":"audit_section","fieldtype":"Section Break","label":"Audit Details","collapsible":1,"collapsible_depends_on":"eval:doc.source_snapshot_hash"},
+  {"fieldname":"source_snapshot_hash","fieldtype":"Data","label":"Availability SHA-256","read_only":1,"no_copy":1},
+  {"fieldname":"amended_from","fieldtype":"Link","label":"Amended From","options":"Casual Availability","read_only":1,"no_copy":1}
+ ],
+ "links": [],
+ "modified": "2026-08-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Malaysia Workforce",
+ "name": "Casual Availability",
+ "owner": "Administrator",
+ "permissions": [
+  {"role":"System Manager","read":1,"create":1,"write":1,"delete":1,"report":1,"export":1,"print":1,"email":1,"share":1},
+  {"role":"HR Manager","read":1,"create":1,"write":1,"report":1,"export":1,"print":1,"email":1,"share":1},
+  {"role":"Malaysia HR Manager","read":1,"create":1,"write":1,"report":1,"export":1,"print":1,"email":1,"share":1},
+  {"role":"Outlet Manager","read":1,"write":1,"report":1,"export":1,"print":1,"email":1,"share":1},
+  {"role":"Employee","read":1,"create":1,"write":1},
+  {"role":"Casual Employee","read":1,"create":1,"write":1}
+ ],
+ "sort_field": "cycle_start",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "employee",
+ "track_changes": 1
+}

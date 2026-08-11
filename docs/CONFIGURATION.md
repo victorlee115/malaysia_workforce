@@ -12,21 +12,28 @@ For each Malaysian company:
 - EPF Employer Number
 - SOCSO Employer Code
 - SSM / Company Registration Number
+- Peninsular Malaysia jurisdiction and supported citizenship policy
+- HRD Corp registration number and 1% levy rate for this 10+ employee deployment
+- statutory rule-review deadline
+- bank adapter key, bank UAT evidence and production activation evidence
+- versioned Malaysia employee privacy notice
+- verified encrypted backup timestamp/evidence and last successful restore-test date
 - Default Payroll Payable Account in Frappe HR
 
 Use separate companies for separate legal employers. Do not reuse one statutory employer number across unrelated Company records.
+
+Publish the employer-approved privacy notice as a private standard File. Use a standard authenticated Web Form/Workflow on Employee to attach acknowledgement evidence; the hook records notice version, user and time immutably. Changing the Company notice version requires fresh acknowledgements before production reactivation.
 
 ## 2. Malaysia Workforce Settings
 
 Review every field before production:
 
-### Roster and attendance
+### Staffing and attendance
 
-- Slot length, minimum shift duration and minimum hourly rate.
-- Minimum-wage effective date.
-- Application reminders.
+- Thirty-minute staffing slots, 4-hour preferred and 2-hour normal minimum assignments.
+- Fourteen-day planning and availability/reminder deadlines.
+- A standard base casual `Shift Type`; managed time variants clone its auto-attendance settings.
 - Check-in windows and automatic verification tolerance.
-- Whether mobile geolocation is required.
 - Whether verified work records are automatically submitted.
 
 ### Statutory controls
@@ -43,6 +50,7 @@ Map valid non-group accounts belonging to the same company:
 - Employer EPF Expense / EPF Payable
 - Employer SOCSO Expense / SOCSO Payable
 - Employer EIS Expense / EIS Payable
+- HRD Corp Levy Expense / HRD Corp Levy Payable
 
 Disable automatic Journal Entry creation until mappings are tested.
 
@@ -59,6 +67,8 @@ Each earning must be independently classified for:
 - EIS wages
 - PCB remuneration
 - PCB remuneration type: regular, additional, benefit in kind, perquisite or not applicable
+- HRD Corp levy wages
+- legal authority for every deduction
 
 Do not infer statutory treatment from the component name. Review allowances, overtime, arrears, bonuses, commissions and benefits with your Malaysian payroll adviser.
 
@@ -113,32 +123,40 @@ Available treatment values:
 - Not Applicable
 - Pending Review
 
-There is no approval step. An authorised HR/payroll user saves changes immediately. Use permissions to limit this power. Enter a reason and review the warning before setting `Not Applicable` for a person recorded under a contract of service.
+`Not Applicable` requires an HR Manager/System Manager, a controlled reason, detailed notes and attached approval evidence. The actor and effective change are retained in immutable treatment history.
 
 `Pending Review` blocks payroll for that employee. `Applicable` with a zero result remains different from `Not Applicable`.
 
 ## 7. Salary structure
 
-Every employee included in a Payroll Entry needs an active submitted Salary Structure Assignment. The app can create a minimal flexible-worker structure for casual pay, but production accounts and component policies must still be reviewed.
+Every employee included in a Payroll Entry needs an active submitted Salary Structure Assignment. Malaysia Workforce does not create a parallel salary structure or payroll run.
 
-## 8. Roster setup
+## 8. Availability and staffing setup
 
-Create a Casual Roster with:
+1. Create an effective-dated `Cafe Coverage Template` for each Company/location. Rows describe weekday demand, time, headcount, Designation, optional standard Skill and criticality.
+2. Create a `Cafe Staffing Plan` for the 14-day cycle and use **Open Availability**.
+3. Employees use **My Availability**, a standard authenticated Web Form. Copying the previous cycle always asks for confirmation.
+4. Use **Generate Proposal**, resolve visible coverage gaps and use the standard Workflow action **Approve and Publish**.
+5. Approval creates submitted standard `Shift Assignment` records. Review the final schedule in the HRMS roster.
 
-- date range and application window;
-- manager, branch, location, project and instructions;
-- one or more coverage rows with date, start/end, role, headcount and rate.
-
-Open the roster. Employees see it only when eligible. They submit exact windows and choose whether exact selected hours require confirmation.
+For public holidays, university periods, events, promotions, closures or forecast changes, edit the generated dated coverage rows before generating the proposal and mark the changed rows as date overrides with a reason.
 
 ## 9. Holiday lists
 
 Assign the correct state/location Holiday List to employees or shifts. Public-holiday pay relies on the applicable holiday context and must be tested for each operating state.
 
-## EPF legacy CSV control
+## EPF i-Akaun and legacy control
 
-`Enable Legacy EPF e-Caruman CSV (UAT Only)` is disabled by default. Leave it disabled in production. The serializer follows the discontinued e-Caruman guide and is not a verified current i-Akaun (Employer) adapter. Enabling it only permits isolated comparison/UAT generation; the resulting file remains `Generated`, never `Ready for Portal`, and cannot be marked as an official submission.
+Use `Portal Only` to generate the current i-Akaun human-entry worksheet and retain acknowledgement evidence. `Enable Legacy EPF e-Caruman CSV (UAT Only)` remains disabled in production. Enabling it only permits isolated comparison testing; that artifact cannot be marked as an official submission.
+
+## Kiosk and standard self-service
+
+Register one kiosk ID and signing secret, assign only the `Malaysia Kiosk` role to its integration user, and set each employee PIN/QR through the credential-rotation API. The endpoint is signed, idempotent by event ID, records device/server timestamps, warns on offline clock drift and creates standard `Employee Checkin`. Use standard Frappe HR web/mobile for leave, claims, payslips, onboarding and employee details.
+
+## Production activation
+
+Install an adapter app exposing the selected bank format through the `malaysia_workforce_bank_adapters` hook. Complete bank UAT, rule review, HRD registration and restore testing, attach evidence, then call `malaysia_workforce.compliance.activation.activate_company`. Configuration changes invalidate the activation hash and require re-activation.
 
 ## Split shifts and standard Frappe HR settings
 
-Malaysia Workforce creates standard Frappe HR Shift Assignment records. To allow two non-overlapping assignments for one employee on the same date, enable **HR Settings → Allow Multiple Shift Assignments for Same Date**. When this standard setting is disabled, the employee portal disables split-shift opt-in and server validation blocks a second same-date selection before roster publication.
+Malaysia Workforce avoids split shifts and handovers. If an evidenced manager exception requires two non-overlapping standard assignments on one date, first enable **HR Settings → Allow Multiple Shift Assignments for Same Date** and validate the employee's agreement/rest limits.

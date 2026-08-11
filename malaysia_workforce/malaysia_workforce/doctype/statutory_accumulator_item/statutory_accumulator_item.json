@@ -12,6 +12,7 @@
   "epf_wages",
   "socso_wages",
   "eis_wages",
+  "hrd_wages",
   "pcb_regular",
   "pcb_additional"
  ],
@@ -57,6 +58,12 @@
    "fieldname": "eis_wages",
    "fieldtype": "Currency",
    "label": "EIS Wages",
+   "precision": "2"
+  },
+  {
+   "fieldname": "hrd_wages",
+   "fieldtype": "Currency",
+   "label": "HRD Corp Levy Wages",
    "precision": "2"
   },
   {

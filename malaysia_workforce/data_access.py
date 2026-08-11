@@ -37,7 +37,7 @@ def get_effective_employee_doc(
 		filters={"employee": employee, "effective_from": ["<=", on_date]},
 		fields=query_fields,
 		order_by="effective_from desc, modified desc",
-		limit_page_length=100,
+		limit=100,
 	)
 	for row in rows:
 		if _active_on(row, on_date):

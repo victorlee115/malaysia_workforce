@@ -1,26 +1,14 @@
 # Live ERPNext test procedure and current result
 
-## Current execution result
+## Current result
 
-A genuine ERPNext runtime could **not** be started in the build sandbox used for RC3. The sandbox had adequate CPU, memory and disk, but did not contain Frappe, ERPNext, Frappe HR, Bench, MariaDB or Redis. Docker/Podman were unavailable, and the configured internal APT repository returned HTTP 404 for Debian Release metadata. External source/package downloads were blocked by the sandbox network policy.
+The RC7 candidate passed a real isolated Frappe/ERPNext/HRMS bench on MariaDB 11.4.12. Clean installation, two consecutive migrations, asset build, eight live app tests and Chrome role acceptance completed successfully on the exact versions in `compatibility-lock.json`.
 
-This is an infrastructure limitation, not a passing live test. RC3 therefore remains a staging candidate and is not production-certified.
+This is strong staging evidence, not business or regulatory production acceptance. See `ISOLATED_E2E_TEST_REPORT.md` and `RELEASE_VALIDATION.md`.
 
-## Checks completed in the sandbox
+## Repeatable Bench test command
 
-- Pure calculation and exporter tests
-- Python compilation
-- JavaScript syntax validation
-- JSON duplicate-key and DocType contract checks
-- Jinja print-format parsing
-- Hook/API target resolution
-- Statutory table checksum verification
-- Archive and release-manifest verification
-- Security-oriented source contracts
-
-## Real Bench test command
-
-On a disposable Frappe 16 / ERPNext 16 / Frappe HR 16 bench with Python 3.14, Node 24, MariaDB 11.8 and Redis available:
+On a disposable Frappe 16 / ERPNext 16 / Frappe HR 16 bench with Python 3.14, Node 24, MariaDB 11.4 and Redis available:
 
 ```bash
 cd /path/to/frappe-bench
@@ -34,20 +22,8 @@ KEEP_SITE=1 \
 /path/to/malaysia_workforce/scripts/run_live_bench_test.sh
 ```
 
-The script:
-
-1. Verifies Python, Node and source prerequisites.
-2. Creates a disposable site when requested.
-3. Installs ERPNext, Frappe HR and Malaysia Workforce.
-4. Runs migration twice to test idempotency.
-5. Builds assets.
-6. Runs the pure/static suite with the Bench virtual-environment Python.
-7. Runs the live Frappe database/schema integration module through `bench --site ... run-tests`.
-8. Runs `bench doctor`.
-9. Starts the development processes and validates `/api/method/ping` over HTTP.
-10. Optionally validates a configured Malaysian company when `COMPANY` is supplied.
-11. Retains logs under `frappe-bench/logs/malaysia-workforce-live-test`.
+The script verifies runtimes, installs the standard apps and Malaysia Workforce, migrates twice, builds assets, runs tests and diagnostics, and checks the live HTTP surface. Retain its logs as deployment evidence.
 
 ## Still required after the script passes
 
-The automated script does not replace business UAT. Complete the roster, attendance, payroll, accounting, permission, scheduler, mobile/browser and authority-upload scenarios in `docs/VALIDATION.md`, including two parallel payroll periods and actual portal acceptance evidence.
+The automated harness does not replace business UAT. Complete the parallel payroll, bank/authority acceptance, physical kiosk, concurrency, recovery, security and specialist sign-off gates in `VALIDATION.md` before production activation.

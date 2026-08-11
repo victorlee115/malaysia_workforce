@@ -1,6 +1,6 @@
 {
  "actions": [],
- "allow_import": 1,
+ "allow_import": 0,
  "creation": "2026-07-29 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -8,14 +8,15 @@
   "naming_series",
   "employee",
   "company",
-  "roster",
-  "roster_selection",
+  "staffing_plan",
+  "staffing_recommendation_key",
   "shift_assignment",
   "work_date",
   "scheduled_start",
   "scheduled_end",
   "actual_check_in",
   "actual_check_out",
+  "attendance",
   "paid_break_minutes",
   "unpaid_break_minutes",
   "approved_payable_hours",
@@ -34,7 +35,7 @@
   "pay_breakdown",
   "gross_pay",
   "calculation_snapshot",
-  "payroll_run",
+  "payroll_entry",
   "pre_payroll_status",
   "payroll_date",
   "additional_salary_references"
@@ -64,16 +65,18 @@
    "reqd": 1
   },
   {
-   "fieldname": "roster",
+   "fieldname": "staffing_plan",
    "fieldtype": "Link",
-   "label": "Roster",
-   "options": "Casual Roster"
+   "label": "Staffing Plan",
+   "options": "Cafe Staffing Plan",
+   "read_only": 1
   },
   {
-   "fieldname": "roster_selection",
-   "fieldtype": "Link",
-   "label": "Roster Selection",
-   "options": "Roster Selection"
+   "fieldname": "staffing_recommendation_key",
+   "fieldtype": "Data",
+   "label": "Staffing Recommendation Key",
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "shift_assignment",
@@ -94,23 +97,34 @@
    "fieldname": "scheduled_start",
    "fieldtype": "Datetime",
    "label": "Scheduled Start",
-   "reqd": 1
+   "reqd": 1,
+   "read_only": 1
   },
   {
    "fieldname": "scheduled_end",
    "fieldtype": "Datetime",
    "label": "Scheduled End",
-   "reqd": 1
+   "reqd": 1,
+   "read_only": 1
   },
   {
    "fieldname": "actual_check_in",
    "fieldtype": "Datetime",
-   "label": "Actual Check In"
+   "label": "Actual Check In",
+   "read_only": 1
   },
   {
    "fieldname": "actual_check_out",
    "fieldtype": "Datetime",
-   "label": "Actual Check Out"
+   "label": "Actual Check Out",
+   "read_only": 1
+  },
+  {
+   "fieldname": "attendance",
+   "fieldtype": "Link",
+   "label": "Attendance",
+   "options": "Attendance",
+   "read_only": 1
   },
   {
    "fieldname": "paid_break_minutes",
@@ -128,25 +142,29 @@
    "fieldname": "approved_payable_hours",
    "fieldtype": "Float",
    "label": "Approved Payable Hours",
-   "precision": "4"
+   "precision": "4",
+   "read_only": 1
   },
   {
    "fieldname": "rate_snapshot",
    "fieldtype": "Currency",
    "label": "Hourly Rate Snapshot",
-   "precision": "2"
+   "precision": "2",
+   "read_only": 1
   },
   {
    "fieldname": "is_rest_day",
    "fieldtype": "Check",
    "label": "Rest Day",
-   "default": "0"
+   "default": "0",
+   "read_only": 1
   },
   {
    "fieldname": "is_public_holiday",
    "fieldtype": "Check",
    "label": "Public Holiday",
-   "default": "0"
+   "default": "0",
+   "read_only": 1
   },
   {
    "fieldname": "status",
@@ -179,37 +197,43 @@
    "fieldname": "ordinary_hours",
    "fieldtype": "Float",
    "label": "Ordinary Hours",
-   "precision": "4"
+   "precision": "4",
+   "read_only": 1
   },
   {
    "fieldname": "additional_hours",
    "fieldtype": "Float",
    "label": "Additional Hours",
-   "precision": "4"
+   "precision": "4",
+   "read_only": 1
   },
   {
    "fieldname": "overtime_hours",
    "fieldtype": "Float",
    "label": "Overtime Hours",
-   "precision": "4"
+   "precision": "4",
+   "read_only": 1
   },
   {
    "fieldname": "rest_day_hours",
    "fieldtype": "Float",
    "label": "Rest Day Hours",
-   "precision": "4"
+   "precision": "4",
+   "read_only": 1
   },
   {
    "fieldname": "public_holiday_hours",
    "fieldtype": "Float",
    "label": "Public Holiday Hours",
-   "precision": "4"
+   "precision": "4",
+   "read_only": 1
   },
   {
    "fieldname": "pay_breakdown",
    "fieldtype": "Table",
    "label": "Pay Breakdown",
-   "options": "Work Pay Breakdown"
+   "options": "Work Pay Breakdown",
+   "read_only": 1
   },
   {
    "fieldname": "gross_pay",
@@ -239,10 +263,10 @@
    "allow_on_submit": 1
   },
   {
-   "fieldname": "payroll_run",
+   "fieldname": "payroll_entry",
    "fieldtype": "Link",
-   "label": "Malaysia Payroll Run",
-   "options": "Malaysia Payroll Run",
+   "label": "Payroll Entry",
+   "options": "Payroll Entry",
    "read_only": 1,
    "allow_on_submit": 1,
    "search_index": 1
@@ -309,7 +333,7 @@
    "amend": 1
   },
   {
-   "role": "Roster Manager",
+   "role": "Outlet Manager",
    "read": 1,
    "create": 1,
    "write": 1,

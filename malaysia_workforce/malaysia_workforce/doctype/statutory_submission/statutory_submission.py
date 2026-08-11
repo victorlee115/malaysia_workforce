@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from decimal import Decimal, InvalidOperation
 
@@ -8,14 +9,15 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, now_datetime
 
-from malaysia_workforce.utils import stable_json
+from malaysia_workforce.utils import ensure_private_file, ensure_roles, stable_json
 
-MONTHLY_TYPES = {"Monthly PCB", "EPF Form A", "SOCSO EIS Combined"}
+MONTHLY_TYPES = {"Monthly PCB", "EPF Form A", "SOCSO EIS Combined", "HRD Levy"}
 ANNUAL_TYPES = {"CP8D Preparation", "Form E Preparation"}
 AUTHORITY_TYPES = {
 	"LHDN": {"Monthly PCB", "CP8D Preparation", "Form E Preparation", "Employee Notification", "Annual Statement"},
 	"EPF": {"EPF Form A"},
 	"PERKESO": {"SOCSO EIS Combined"},
+	"HRD Corp": {"HRD Levy"},
 }
 FROZEN_STATUSES = {"Submitted", "Accepted", "Rejected", "Paid", "Reconciled"}
 
@@ -66,6 +68,10 @@ class StatutorySubmission(Document):
 			frappe.throw(_("Revision cannot be negative."))
 
 	def _validate_unique_revision(self):
+		month = int(self.contribution_month or 0)
+		self.submission_key = hashlib.sha256(
+			f"{self.company}|{self.authority}|{self.submission_type}|{self.contribution_year}|{month}|{int(self.revision or 0)}".encode()
+		).hexdigest()
 		filters = {
 			"company": self.company,
 			"authority": self.authority,
@@ -91,14 +97,16 @@ class StatutorySubmission(Document):
 			"contribution_year",
 			"contribution_month",
 			"revision",
+			"submission_key",
 			"submission_mode",
-			"payroll_run",
+			"payroll_entry",
 			"schema_version",
 			"generated_file",
 			"file_sha256",
 			"source_snapshot_hash",
 			"source_salary_slips",
 			"employer_reference_snapshot",
+			"payment_due_date",
 		)
 		for fieldname in protected:
 			if str(before.get(fieldname) or "") != str(self.get(fieldname) or ""):
@@ -160,9 +168,14 @@ class StatutorySubmission(Document):
 		if self.status in {"Submitted", "Accepted", "Paid", "Reconciled"}:
 			if not self.external_reference or not self.submitted_on:
 				frappe.throw(_("External Reference and Submitted On are required after submission."))
+			self.acknowledgement = ensure_private_file(
+				self.acknowledgement,
+				_("Authority submission acknowledgement"),
+			)
 		if self.status in {"Paid", "Reconciled"}:
 			if not self.payment_reference or not self.paid_on or self.paid_amount in (None, ""):
 				frappe.throw(_("Payment Reference, Paid On and Paid Amount are required."))
+			self.receipt = ensure_private_file(self.receipt, _("Authority payment receipt"))
 		if self.status == "Reconciled" and abs(Decimal(str(self.reconciliation_difference or 0))) > Decimal("0.01"):
 			frappe.throw(_("A submission cannot be Reconciled while the payment difference is non-zero."))
 
@@ -187,6 +200,13 @@ class StatutorySubmission(Document):
 	@frappe.whitelist(methods=["POST"])
 	def mark_submitted(self, external_reference: str, acknowledgement: str | None = None):
 		self.check_permission("write")
+		ensure_roles("HR Manager", "Malaysia HR Manager", "System Manager")
+		if self.generated_by == frappe.session.user:
+			frappe.throw(_("The authority-file preparer cannot record the final human submission release."))
+		if self.payroll_entry:
+			state = frappe.db.get_value("Payroll Entry", self.payroll_entry, "custom_malaysia_control_state")
+			if state != "Released":
+				frappe.throw(_("The linked Payroll Entry requires recorded human release before authority submission."))
 		if self.submission_type == "EPF Form A" and str(self.schema_version or "").startswith(
 			"KWSP-ECARUMAN-LEGACY"
 		):
@@ -202,8 +222,10 @@ class StatutorySubmission(Document):
 		if not external_reference or not str(external_reference).strip():
 			frappe.throw(_("External Reference is required."))
 		self.external_reference = str(external_reference).strip()
-		if acknowledgement:
-			self.acknowledgement = acknowledgement
+		self.acknowledgement = ensure_private_file(
+			acknowledgement,
+			_("Authority submission acknowledgement"),
+		)
 		self.submitted_on = now_datetime()
 		self.status = "Submitted"
 		self.save()
@@ -212,10 +234,14 @@ class StatutorySubmission(Document):
 	@frappe.whitelist(methods=["POST"])
 	def mark_accepted(self, acknowledgement: str | None = None):
 		self.check_permission("write")
+		ensure_roles("HR Manager", "Malaysia HR Manager", "System Manager")
 		if self.status not in {"Submitted", "Accepted"}:
 			frappe.throw(_("Only a submitted record can be marked Accepted."))
 		if acknowledgement:
-			self.acknowledgement = acknowledgement
+			self.acknowledgement = ensure_private_file(
+				acknowledgement,
+				_("Authority acceptance acknowledgement"),
+			)
 		self.accepted_on = now_datetime()
 		self.status = "Accepted"
 		self.save()
@@ -224,6 +250,7 @@ class StatutorySubmission(Document):
 	@frappe.whitelist(methods=["POST"])
 	def mark_rejected(self, reason: str):
 		self.check_permission("write")
+		ensure_roles("HR Manager", "Malaysia HR Manager", "System Manager")
 		if self.status not in {"Submitted", "Ready for Portal", "Generated"}:
 			frappe.throw(_("This record cannot be marked Rejected from its current status."))
 		if not reason or not str(reason).strip():
@@ -236,6 +263,7 @@ class StatutorySubmission(Document):
 	@frappe.whitelist(methods=["POST"])
 	def mark_paid(self, payment_reference: str, paid_amount, receipt: str | None = None):
 		self.check_permission("write")
+		ensure_roles("HR Manager", "Malaysia HR Manager", "System Manager")
 		if self.status not in {"Submitted", "Accepted", "Paid"}:
 			frappe.throw(_("Only a submitted or accepted record can be marked Paid."))
 		if not payment_reference or not str(payment_reference).strip():
@@ -243,8 +271,7 @@ class StatutorySubmission(Document):
 		amount = _amount(paid_amount, _("Paid Amount"))
 		self.payment_reference = str(payment_reference).strip()
 		self.paid_amount = amount
-		if receipt:
-			self.receipt = receipt
+		self.receipt = ensure_private_file(receipt, _("Authority payment receipt"))
 		self.paid_on = now_datetime()
 		self.status = "Paid"
 		self.save()
@@ -253,6 +280,7 @@ class StatutorySubmission(Document):
 	@frappe.whitelist(methods=["POST"])
 	def reconcile(self):
 		self.check_permission("write")
+		ensure_roles("HR Manager", "Malaysia HR Manager", "System Manager")
 		if self.status not in {"Paid", "Reconciled"}:
 			frappe.throw(_("Record payment before reconciliation."))
 		self._calculate_totals()

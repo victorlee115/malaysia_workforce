@@ -1,38 +1,36 @@
 # Operations
 
-## Casual roster lifecycle
+## Staffing lifecycle
 
-1. Manager creates a Draft roster and coverage rows.
-2. Manager opens applications.
-3. Eligible workers submit exact availability windows.
-4. Manager reviews coverage by date, role and interval.
-5. Manager selects a worker and an exact subset of offered hours.
-6. If employee confirmation is required, the worker accepts or declines in `/workforce`.
-7. Publishing creates a standard submitted Shift Assignment and a Shift Work Record.
-8. Employee clocks IN and OUT or a device integration creates Employee Checkin rows.
-9. Normal records are verified; exceptions request employee correction or manager review.
-10. An Approved Shift Work Record becomes eligible for payroll.
+1. Manager maintains an effective-dated coverage template and creates a two-week Staffing Plan.
+2. **Open Availability** generates dated demand and opens the native Web Form cycle.
+3. Casual/part-time employees submit exact availability windows; missing submissions mean unavailable.
+4. **Generate Proposal** favours critical coverage and longer continuous assignments, then priority and fairness.
+5. Manager resolves gaps and evidenced exceptions through standard Assignment/ToDo and Workflow.
+6. **Approve and Publish** creates ordinary submitted Shift Assignments and routes the manager to the HRMS roster.
+7. The signed kiosk creates standard Employee Checkins; HRMS auto-attendance creates Attendance.
+8. A submitted Attendance plus check-in evidence drives the immutable derived Shift Work Record.
 
-Do not delete a confirmed assignment to hide a cancellation. Use the roster/selection status and preserve the audit trail.
+Do not delete a confirmed assignment or derived work record to hide a change. Cancel through standard records and preserve the audit trail.
 
 ## Payroll lifecycle
 
-1. Create a Malaysia Payroll Run.
-2. Select company, period, frequency, payroll date, cost centre and payable account.
-3. Collect and validate approved, unowned work records.
+1. Create and save the standard Frappe HR Payroll Entry.
+2. Select company, period, frequency, payroll date, cost centre and payable account; mark the final contribution-month payroll when applicable.
+3. Use **Malaysia Controls → Prepare Malaysia Inputs** to validate and reserve approved work records.
 4. Resolve all validation errors.
 5. Generate idempotent Additional Salary rows.
-6. Create the standard Payroll Entry.
-7. Review and submit Salary Slips through the standard Frappe HR flow.
+6. Review and submit Salary Slips through the standard Frappe HR flow.
 8. The app calculates month-to-date statutory totals and stores a frozen snapshot on each Salary Slip.
-9. If configured, create the employer contribution Journal Entry.
-10. On a final pay run, generate monthly statutory submissions/files automatically.
+9. Prepare the configured bank-specific file and reconcile its control total.
+10. An HR Manager records the human Payroll Entry release; self-approval is not permitted.
+11. Generate statutory preparation files and record separate human portal submission/payment evidence.
 
-A work record is assigned to one payroll run. Late work must be processed through an adjustment run, not added silently to a frozen run.
+A work record is assigned to one Payroll Entry. Late work must be processed through a standard off-cycle/adjustment Payroll Entry, not added silently to a frozen source.
 
 ## Weekly and multiple pay runs
 
-Statutory calculations use the current month total less amounts already submitted in earlier pay runs. Mark the correct run as `is_final_run_for_month`. The final run carries the balancing statutory amount and is the normal trigger for monthly files.
+Statutory calculations use the current month total less amounts already submitted in earlier pay runs. Mark the correct Payroll Entry as the final contribution-month payroll. The final entry carries the balancing statutory amount.
 
 ## Monthly filing
 
@@ -42,7 +40,7 @@ For each authority submission:
 2. Resolve blocking validation errors.
 3. Generate the private file.
 4. Verify the filename, checksum, employee count and totals.
-5. Upload through the official portal or approved API.
+5. Confirm the linked Payroll Entry has been human-released, then upload through the official portal or approved API.
 6. Record the official external reference and attach acknowledgement.
 7. Mark accepted or rejected.
 8. Record payment reference, amount, receipt and date.
@@ -62,10 +60,11 @@ Generate annual preparation statements only after the final December payroll and
 - no expired work/statutory profile;
 - no statutory treatment left `Pending Review`;
 - no rate below the active minimum;
-- no payroll work record without a run owner after generation;
+- no generated payroll work record without a Payroll Entry owner;
 - no generated authority file without a checksum;
 - all accepted submissions have acknowledgements and all paid submissions have receipts.
+- HRD Corp headcount/levy tasks and workplace-incident 48-hour tasks are not overdue.
 
 ## Backups and retention
 
-Back up database and files before every payroll finalisation, migration and statutory revision. Retain submitted snapshots, generated files, acknowledgements, receipts and treatment history according to your legal-retention policy.
+Back up database and files before every payroll finalisation, migration and statutory revision. Verify encryption and record backup evidence/timestamp; Payroll Entry release requires a verified backup no older than 24 hours. Perform and record a restoration test at least every 90 days. Retain submitted snapshots, generated files, acknowledgements, receipts and treatment history according to your legal-retention policy.

@@ -2,11 +2,14 @@
 
 ## Before upgrade
 
-1. Finish or freeze the current payroll run.
+1. Finish or freeze the current standard Payroll Entry.
 2. Export unresolved attendance and submission exception lists.
 3. Back up database and private/public files.
 4. Record installed Frappe, ERPNext, HRMS and app commit/version.
-5. Run the diagnostic and retain its output.
+5. Resolve duplicate accumulator/submission revisions before migration.
+6. RC6 removes the release-candidate custom roster and `Malaysia Payroll Run`. The preflight migration stops before schema sync if any legacy operational records exist. Export, reconcile and remove those records deliberately; the migration never guesses how to merge them.
+7. If an older RC created `Employer EPF`, `Employer SOCSO` or `Employer EIS` Salary Components, retire them through normal ERPNext administration only after proving they are unused.
+8. Run the diagnostic and retain its output.
 
 ## Upgrade
 

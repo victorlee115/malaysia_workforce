@@ -10,6 +10,8 @@
   "company",
   "tax_year",
   "form_type",
+  "revision",
+  "statement_key",
   "gross_remuneration",
   "benefits_in_kind",
   "value_of_living_accommodation",
@@ -21,6 +23,8 @@
   "cp38",
   "zakat",
   "status",
+  "issued_by",
+  "issued_on",
   "generated_from_snapshot"
  ],
  "fields": [
@@ -61,6 +65,21 @@
    "options": "EA\nEC\nPCB 2(II)",
    "default": "EA",
    "reqd": 1
+  },
+  {
+   "fieldname": "revision",
+   "fieldtype": "Int",
+   "label": "Revision",
+   "default": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_key",
+   "fieldtype": "Data",
+   "label": "Statement Uniqueness Key",
+   "read_only": 1,
+   "unique": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "gross_remuneration",
@@ -128,6 +147,21 @@
    "label": "Status",
    "options": "Draft\nGenerated\nIssued\nCorrected",
    "default": "Draft"
+  },
+  {
+   "fieldname": "issued_by",
+   "fieldtype": "Link",
+   "label": "Issued By",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "issued_on",
+   "fieldtype": "Datetime",
+   "label": "Issued On",
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "generated_from_snapshot",

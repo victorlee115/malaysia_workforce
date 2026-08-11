@@ -13,7 +13,10 @@
   "status",
   "relief_claims",
   "total_reliefs",
-  "employee_declaration"
+  "employee_declaration",
+  "manual_review_notes",
+  "manual_review_approved_by",
+  "manual_review_approved_on"
  ],
  "fields": [
   {
@@ -79,6 +82,24 @@
    "fieldtype": "Check",
    "label": "I declare that this information is true and complete",
    "default": "0"
+  },
+  {
+   "fieldname": "manual_review_notes",
+   "fieldtype": "Small Text",
+   "label": "HR Manager Eligibility / Sub-limit Review Notes"
+  },
+  {
+   "fieldname": "manual_review_approved_by",
+   "fieldtype": "Link",
+   "label": "Manual Review Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "manual_review_approved_on",
+   "fieldtype": "Datetime",
+   "label": "Manual Review Approved On",
+   "read_only": 1
   }
  ],
  "links": [],

@@ -12,6 +12,7 @@ from frappe import _
 from frappe.utils import get_last_day, getdate, now_datetime
 
 from malaysia_workforce.data_access import get_malaysia_profile
+from malaysia_workforce.compliance.scope import assert_employee_supported, assert_rule_review_current
 from malaysia_workforce.statutory.exporters.common import digits
 from malaysia_workforce.statutory.exporters.epf_csv import EPFCSVRecord, generate_epf_csv
 from malaysia_workforce.statutory.exporters.lhdn_pcb import LHDNPCBRecord, generate_lhdn_pcb_file
@@ -20,15 +21,16 @@ from malaysia_workforce.statutory.exporters.perkeso_combined import (
 	generate_perkeso_combined_file,
 )
 from malaysia_workforce.statutory.snapshot import parse_json_object, parse_statutory_snapshot
-from malaysia_workforce.utils import ensure_roles, sha256_bytes, stable_json
+from malaysia_workforce.utils import ensure_roles, select_for_update, sha256_bytes, stable_json
 
-MONTHLY_TYPES = {"Monthly PCB", "EPF Form A", "SOCSO EIS Combined"}
+MONTHLY_TYPES = {"Monthly PCB", "EPF Form A", "SOCSO EIS Combined", "HRD Levy"}
 ANNUAL_PREPARATION_TYPES = {"CP8D Preparation", "Form E Preparation"}
 FROZEN_STATUSES = {"Submitted", "Accepted", "Rejected", "Paid", "Reconciled"}
 SCHEMA_VERSIONS = {
 	"Monthly PCB": "LHDN-MTD-TEXT-EXHIBIT-4-2026",
-	"EPF Form A": "KWSP-ECARUMAN-LEGACY-CSV-UNVERIFIED",
+	"EPF Form A": "KWSP-IAKAUN-EMPLOYER-PORTAL-WORKSHEET-2026.1",
 	"SOCSO EIS Combined": "PERKESO-COMBINED-278-2026",
+	"HRD Levy": "HRDCORP-LEVY-PORTAL-WORKSHEET-2026.1",
 	"CP8D Preparation": "MW-PREPARATION-WORKSHEET-2026.1",
 	"Form E Preparation": "MW-PREPARATION-WORKSHEET-2026.1",
 }
@@ -85,7 +87,7 @@ def _salary_slip_rows(company: str, year: int, month: int | None = None) -> list
 			"custom_malaysia_statutory_snapshot",
 		],
 		order_by="employee, end_date, name",
-		limit_page_length=50000,
+		limit=50000,
 	)
 
 
@@ -148,6 +150,7 @@ def _company_reference_snapshot(company) -> dict[str, str]:
 		"lhdn_employer_number": company.custom_lhdn_employer_number or "",
 		"epf_employer_number": company.custom_epf_employer_number or "",
 		"socso_employer_code": company.custom_socso_employer_code or "",
+		"hrd_corp_registration_number": company.custom_hrd_corp_registration_number or "",
 	}
 
 
@@ -157,6 +160,7 @@ def _portal_url(authority: str) -> str:
 		"LHDN": settings.lhdn_portal_url,
 		"EPF": settings.epf_portal_url,
 		"PERKESO": settings.perkeso_portal_url,
+		"HRD Corp": settings.hrd_corp_portal_url,
 	}.get(authority, "") or ""
 
 
@@ -227,6 +231,9 @@ def _validate_monthly_line(submission_type: str, employee: str, line: dict, item
 					f"{employee}: SOCSO wages ({socso_wage:.2f}) and EIS wages ({eis_wage:.2f}) differ, "
 					"but the combined ASSIST file has one salary field. Correct the Salary Component classifications."
 				)
+	elif submission_type == "HRD Levy":
+		if Decimal(str(line["employer_amount"] or 0)) <= 0:
+			errors.append(f"{employee}: HRD Corp levy line must have a positive employer amount.")
 	return errors
 
 
@@ -249,6 +256,11 @@ def populate_submission_lines(submission) -> list[str]:
 	errors: list[str] = []
 
 	for employee, item in sorted(data.items()):
+		try:
+			assert_employee_supported(employee, submission.company)
+		except (frappe.ValidationError, frappe.PermissionError) as exc:
+			errors.append(f"{employee}: {exc}")
+			continue
 		profile = get_malaysia_profile(employee)
 		if not profile:
 			errors.append(f"{employee}: Malaysia Employee Profile is missing.")
@@ -297,7 +309,7 @@ def populate_submission_lines(submission) -> list[str]:
 			line["employee_amount"] = Decimal(str(result.get("employee") or 0))
 			line["employer_amount"] = Decimal(str(result.get("employer") or 0))
 			line["rule_version"] = ", ".join(sorted(result.get("versions", set())))
-		else:
+		elif submission.submission_type == "SOCSO EIS Combined":
 			socso = item["results"].get("SOCSO", {})
 			eis = item["results"].get("EIS", {})
 			lindung = item["results"].get("LINDUNG 24 Jam", {})
@@ -330,6 +342,13 @@ def populate_submission_lines(submission) -> list[str]:
 					| set(lindung.get("versions", set()))
 				)
 			)
+		else:
+			result = item["results"].get("HRD Corp", {})
+			if Decimal(str(result.get("employer") or 0)) == 0:
+				continue
+			line["wages"] = item["bases"].get("hrd", Decimal("0"))
+			line["employer_amount"] = Decimal(str(result.get("employer") or 0))
+			line["rule_version"] = ", ".join(sorted(result.get("versions", set())))
 
 		line_errors = _validate_monthly_line(submission.submission_type, employee, line, item)
 		if line_errors:
@@ -507,6 +526,39 @@ def _save_private_file(submission, filename: str, content: bytes) -> str:
 	return file_doc.file_url
 
 
+def _portal_worksheet(submission, *, heading: str) -> bytes:
+	"""Generate a human-reviewed portal handoff, never an asserted upload schema."""
+	stream = io.StringIO(newline="")
+	writer = csv.writer(stream, lineterminator="\r\n")
+	writer.writerow([heading, "PORTAL PREPARATION WORKSHEET ONLY", submission.schema_version])
+	writer.writerow(
+		[
+			"Employee",
+			"Name",
+			"Identity / Member No",
+			"Levy-classified Wages",
+			"Employee Amount",
+			"Employer Amount",
+			"Rule Version",
+		]
+	)
+	for row in submission.employee_lines:
+		writer.writerow(
+			[
+				row.employee,
+				row.employee_name,
+				row.agency_number or row.identity_number,
+				f"{Decimal(str(row.wages or 0)):.2f}",
+				f"{Decimal(str(row.employee_amount or 0)):.2f}",
+				f"{Decimal(str(row.employer_amount or 0)):.2f}",
+				row.rule_version,
+			]
+		)
+	writer.writerow([])
+	writer.writerow(["CONTROL TOTALS", submission.employee_count, submission.wage_total, submission.payable_total])
+	return stream.getvalue().encode("utf-8-sig")
+
+
 def _employer_references(submission) -> dict[str, str]:
 	if not submission.employer_reference_snapshot:
 		return {}
@@ -520,6 +572,14 @@ def _employer_references(submission) -> dict[str, str]:
 def generate_submission_file(submission):
 	_ensure_permission()
 	_ensure_company_access(submission.company)
+	period_date = getdate(
+		get_last_day(
+			f"{int(submission.contribution_year):04d}-{int(submission.contribution_month or 12):02d}-01"
+		)
+	)
+	assert_rule_review_current(submission.company, period_date)
+	select_for_update("SELECT name FROM `tabStatutory Submission` WHERE name=%s", (submission.name,))
+	submission.reload()
 	if submission.status in FROZEN_STATUSES:
 		frappe.throw(_("This submission is frozen. Create a new revision."))
 	if submission.submission_mode == "API":
@@ -528,10 +588,35 @@ def generate_submission_file(submission):
 				"No approved authority payroll-submission API adapter is installed. Use File Upload or Portal Only until the authority grants an official integration contract."
 			)
 		)
+	prior_artifact = submission.generated_file
+	prior_artifact_hash = submission.file_sha256
+	prior_source_hash = submission.source_snapshot_hash
+	prior_status = submission.status
 	if submission.submission_type in MONTHLY_TYPES:
 		errors = populate_submission_lines(submission)
 		if errors:
 			return {"status": "Validation Failed", "errors": errors}
+		if prior_artifact and prior_source_hash == submission.source_snapshot_hash:
+			submission.status = prior_status
+			submission.save()
+			return {
+				"status": submission.status,
+				"file_url": prior_artifact,
+				"sha256": prior_artifact_hash,
+				"source_snapshot_sha256": submission.source_snapshot_hash,
+				"employee_count": submission.employee_count,
+				"idempotent_replay": True,
+			}
+		if prior_artifact and prior_source_hash != submission.source_snapshot_hash:
+			message = _(
+				"Payroll or employer source data changed after file generation. The prior artifact was invalidated; review the new lines and generate again."
+			)
+			submission.generated_file = None
+			submission.file_sha256 = None
+			submission.status = "Validation Failed"
+			submission.validation_errors = json.dumps([message], indent=2)
+			submission.save()
+			return {"status": "Validation Failed", "errors": [message], "source_changed": True}
 		if not submission.employee_lines:
 			submission.status = "Not Required"
 			submission.generated_file = None
@@ -585,20 +670,26 @@ def generate_submission_file(submission):
 			f"{int(submission.contribution_month):02d}_{int(submission.contribution_year):04d}.txt"
 		)
 	elif submission.submission_type == "EPF Form A":
-		_ensure_legacy_epf_uat_enabled()
-		records = [
-			EPFCSVRecord(
-				member_number=row.agency_number,
-				identity_number=row.identity_number,
-				name=row.employee_name,
-				wages=Decimal(str(row.wages or 0)),
-				employer_share=Decimal(str(row.employer_amount or 0)),
-				employee_share=Decimal(str(row.employee_amount or 0)),
-			)
-			for row in submission.employee_lines
-		]
-		content = generate_epf_csv(records)
-		filename = f"EPF_LEGACY_ECARUMAN_UAT_{int(submission.contribution_year):04d}{int(submission.contribution_month):02d}.csv"
+		if submission.submission_mode == "File Upload":
+			_ensure_legacy_epf_uat_enabled()
+			submission.schema_version = "KWSP-ECARUMAN-LEGACY-CSV-UNVERIFIED"
+			records = [
+				EPFCSVRecord(
+					member_number=row.agency_number,
+					identity_number=row.identity_number,
+					name=row.employee_name,
+					wages=Decimal(str(row.wages or 0)),
+					employer_share=Decimal(str(row.employer_amount or 0)),
+					employee_share=Decimal(str(row.employee_amount or 0)),
+				)
+				for row in submission.employee_lines
+			]
+			content = generate_epf_csv(records)
+			filename = f"EPF_LEGACY_ECARUMAN_UAT_{int(submission.contribution_year):04d}{int(submission.contribution_month):02d}.csv"
+		else:
+			submission.schema_version = SCHEMA_VERSIONS[submission.submission_type]
+			content = _portal_worksheet(submission, heading="EPF i-Akaun (Employer)")
+			filename = f"EPF_IAKAUN_PORTAL_WORKSHEET_{int(submission.contribution_year):04d}{int(submission.contribution_month):02d}.csv"
 	elif submission.submission_type == "SOCSO EIS Combined":
 		employer_code = references.get("socso_employer_code", "")
 		registration_number = references.get("registration_number", "")
@@ -637,6 +728,11 @@ def generate_submission_file(submission):
 			f"PERKESO_SOCSO_EIS_{int(submission.contribution_year):04d}"
 			f"{int(submission.contribution_month):02d}.txt"
 		)
+	elif submission.submission_type == "HRD Levy":
+		if not references.get("hrd_corp_registration_number"):
+			frappe.throw(_("Set the HRD Corp Registration Number on the Company."))
+		content = _portal_worksheet(submission, heading="HRD Corp Levy")
+		filename = f"HRDCORP_LEVY_PORTAL_WORKSHEET_{int(submission.contribution_year):04d}{int(submission.contribution_month):02d}.csv"
 	else:
 		submission.schema_version = SCHEMA_VERSIONS[submission.submission_type]
 		submission.portal_url = _portal_url(submission.authority)
@@ -653,7 +749,6 @@ def generate_submission_file(submission):
 	submission.generated_by = frappe.session.user
 	if (
 		submission.submission_type in ANNUAL_PREPARATION_TYPES
-		or submission.submission_type == "EPF Form A"
 		or submission.submission_mode == "Document Only"
 	):
 		# The bundled EPF serializer is deliberately UAT-only and must never be
@@ -672,7 +767,7 @@ def generate_submission_file(submission):
 		"employee_count": submission.employee_count,
 		"schema_version": submission.schema_version,
 	}
-	if submission.submission_type == "EPF Form A":
+	if submission.submission_type == "EPF Form A" and str(submission.schema_version).startswith("KWSP-ECARUMAN"):
 		result["warning"] = _(
 			"Legacy e-Caruman CSV generated for UAT only. It is not approved for the current i-Akaun (Employer) workflow."
 		)

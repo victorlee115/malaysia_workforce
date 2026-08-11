@@ -1,0 +1,15 @@
+{
+ "actions": [], "creation": "2026-08-11 00:00:00.000000", "doctype": "DocType", "editable_grid": 1, "engine": "InnoDB",
+ "field_order": ["weekday","start_time","end_time","required_headcount","designation","required_skill","criticality"],
+ "fields": [
+  {"fieldname":"weekday","fieldtype":"Select","label":"Weekday","options":"Monday\nTuesday\nWednesday\nThursday\nFriday\nSaturday\nSunday","reqd":1,"in_list_view":1},
+  {"fieldname":"start_time","fieldtype":"Time","label":"Starts","reqd":1,"in_list_view":1},
+  {"fieldname":"end_time","fieldtype":"Time","label":"Ends","reqd":1,"in_list_view":1},
+  {"fieldname":"required_headcount","fieldtype":"Int","label":"Employees Needed","default":"1","reqd":1,"in_list_view":1},
+  {"fieldname":"designation","fieldtype":"Link","label":"Designation","options":"Designation","reqd":1},
+  {"fieldname":"required_skill","fieldtype":"Link","label":"Required Skill","options":"Skill"},
+  {"fieldname":"criticality","fieldtype":"Select","label":"Coverage","options":"Critical\nNormal","default":"Normal","reqd":1}
+ ],
+ "istable": 1, "links": [], "modified": "2026-08-11 00:00:00.000000", "modified_by": "Administrator", "module": "Malaysia Workforce",
+ "name": "Cafe Coverage Row", "owner": "Administrator", "permissions": [], "states": []
+}

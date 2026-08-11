@@ -6,6 +6,7 @@ import frappe
 from frappe.utils import getdate
 
 from malaysia_workforce.attendance.events import reconcile_work_record
+from malaysia_workforce.compliance.exceptions import create_assigned_exception
 
 
 def reconcile_recent_work_records():
@@ -17,6 +18,19 @@ def reconcile_recent_work_records():
 			"status": ["in", ["Pending Attendance", "Employee Correction Required"]],
 		},
 		pluck="name",
-		limit_page_length=1000,
+		limit=1000,
 	):
-		reconcile_work_record(name)
+		try:
+			reconcile_work_record(name)
+		except Exception as exc:
+			frappe.log_error(title=f"Attendance reconciliation failed: {name}", message=frappe.get_traceback())
+			try:
+				create_assigned_exception(
+					code="ATTENDANCE-RECONCILIATION",
+					description=f"Resolve attendance reconciliation failure for {name}: {exc}",
+					reference_type="Shift Work Record",
+					reference_name=name,
+					due_date=getdate(),
+				)
+			except Exception:
+				frappe.log_error(title=f"Attendance exception assignment failed: {name}", message=frappe.get_traceback())

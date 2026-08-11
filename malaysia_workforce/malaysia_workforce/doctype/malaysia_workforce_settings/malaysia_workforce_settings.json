@@ -7,14 +7,20 @@
  "field_order": [
   "general_section",
   "enabled",
+  "production_control_schema_version",
   "default_company",
   "default_jurisdiction",
   "general_column",
-  "roster_slot_minutes",
-  "minimum_shift_minutes",
-  "minimum_hourly_rate",
-  "minimum_wage_effective_from",
-  "application_reminder_hours",
+  "staffing_slot_minutes",
+  "preferred_minimum_shift_hours",
+  "normal_minimum_shift_hours",
+  "maximum_recommended_shift_hours",
+  "planning_cycle_days",
+  "availability_lead_days",
+  "availability_close_days",
+  "approval_lead_days",
+  "availability_reminder_hours",
+  "flexible_shift_template",
   "attendance_section",
   "checkin_grace_before_minutes",
   "checkout_grace_after_minutes",
@@ -22,7 +28,11 @@
   "auto_verified_pay_basis",
   "auto_submit_verified_work_records",
   "prevent_consecutive_same_checkin_type",
-  "require_geolocation_for_mobile_checkin",
+  "kiosk_enabled",
+  "kiosk_device_id",
+  "kiosk_shared_secret",
+  "kiosk_max_clock_drift_seconds",
+  "kiosk_last_seen_on",
   "statutory_section",
   "strict_rule_review",
   "rules_reviewed_through",
@@ -33,6 +43,7 @@
   "lhdn_portal_url",
   "epf_portal_url",
   "perkeso_portal_url",
+  "hrd_corp_portal_url",
   "components_section",
   "casual_ordinary_component",
   "casual_additional_component",
@@ -52,10 +63,12 @@
   "employer_epf_expense_account",
   "employer_socso_expense_account",
   "employer_eis_expense_account",
+  "employer_hrd_expense_account",
   "accounting_column",
   "epf_payable_account",
   "socso_payable_account",
-  "eis_payable_account"
+  "eis_payable_account",
+  "hrd_payable_account"
  ],
  "fields": [
   {
@@ -67,7 +80,15 @@
    "fieldname": "enabled",
    "fieldtype": "Check",
    "label": "Enable Malaysia Workforce",
-   "default": "1"
+   "default": "0"
+  },
+  {
+   "fieldname": "production_control_schema_version",
+   "fieldtype": "Int",
+   "label": "Production Control Schema Version",
+   "default": "0",
+   "hidden": 1,
+   "read_only": 1
   },
   {
    "fieldname": "default_company",
@@ -79,7 +100,7 @@
    "fieldname": "default_jurisdiction",
    "fieldtype": "Select",
    "label": "Default Legal Jurisdiction",
-   "options": "Peninsular Malaysia\nSabah\nSarawak",
+   "options": "Peninsular Malaysia",
    "default": "Peninsular Malaysia"
   },
   {
@@ -88,38 +109,67 @@
    "label": "General Column"
   },
   {
-   "fieldname": "roster_slot_minutes",
+   "fieldname": "staffing_slot_minutes",
    "fieldtype": "Int",
-   "label": "Roster Slot Minutes",
+   "label": "Staffing Time Step (Minutes)",
    "default": "30",
    "reqd": 1
   },
   {
-   "fieldname": "minimum_shift_minutes",
+   "fieldname": "preferred_minimum_shift_hours",
+   "fieldtype": "Float",
+   "label": "Preferred Minimum Shift Hours",
+   "default": "4"
+  },
+  {
+   "fieldname": "normal_minimum_shift_hours",
+   "fieldtype": "Float",
+   "label": "Normal Minimum Shift Hours",
+   "default": "2"
+  },
+  {
+   "fieldname": "maximum_recommended_shift_hours",
+   "fieldtype": "Float",
+   "label": "Maximum Recommended Shift Hours",
+   "default": "8"
+  },
+  {
+   "fieldname": "planning_cycle_days",
    "fieldtype": "Int",
-   "label": "Default Minimum Shift Minutes",
-   "default": "120"
+   "label": "Planning Cycle Days",
+   "default": "14",
+   "read_only": 1
   },
   {
-   "fieldname": "minimum_hourly_rate",
-   "fieldtype": "Currency",
-   "label": "Configured Minimum Hourly Rate",
-   "default": "8.72",
-   "reqd": 1,
-   "description": "Current operational safeguard. Review against the applicable Minimum Wages Order before each effective change."
-  },
-  {
-   "fieldname": "minimum_wage_effective_from",
-   "fieldtype": "Date",
-   "label": "Minimum Hourly Rate Effective From",
-   "default": "2025-08-01",
-   "reqd": 1
-  },
-  {
-   "fieldname": "application_reminder_hours",
+   "fieldname": "availability_lead_days",
    "fieldtype": "Int",
-   "label": "Application Reminder Hours",
+   "label": "Open Availability Before Cycle (Days)",
+   "default": "21"
+  },
+  {
+   "fieldname": "availability_close_days",
+   "fieldtype": "Int",
+   "label": "Close Availability Before Cycle (Days)",
+   "default": "7"
+  },
+  {
+   "fieldname": "approval_lead_days",
+   "fieldtype": "Int",
+   "label": "Publish Before Cycle (Days)",
+   "default": "3"
+  },
+  {
+   "fieldname": "availability_reminder_hours",
+   "fieldtype": "Int",
+   "label": "Availability Reminder Hours",
    "default": "24"
+  },
+  {
+   "fieldname": "flexible_shift_template",
+   "fieldtype": "Link",
+   "label": "Base Casual Shift Type",
+   "options": "Shift Type",
+   "description": "Managed flexible Shift Types inherit attendance settings from this standard HRMS Shift Type."
   },
   {
    "fieldname": "attendance_section",
@@ -160,18 +210,42 @@
    "default": "0"
   },
   {
-   "fieldname": "require_geolocation_for_mobile_checkin",
-   "fieldtype": "Check",
-   "label": "Require Geolocation for Mobile Check-in",
-   "default": "0",
-   "description": "When enabled, the employee portal blocks mobile clocking unless the browser supplies valid coordinates."
-  },
-  {
    "fieldname": "prevent_consecutive_same_checkin_type",
    "fieldtype": "Check",
    "label": "Prevent Consecutive Same Check-in Type",
    "default": "1",
-   "description": "Prevents accidental IN/IN or OUT/OUT records for the same roster shift."
+   "description": "Prevents accidental IN/IN or OUT/OUT records for the same assigned shift."
+  },
+  {
+   "fieldname": "kiosk_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Registered Outlet Kiosk",
+   "default": "0"
+  },
+  {
+   "fieldname": "kiosk_device_id",
+   "fieldtype": "Data",
+   "label": "Registered Kiosk ID",
+   "depends_on": "eval:doc.kiosk_enabled"
+  },
+  {
+   "fieldname": "kiosk_shared_secret",
+   "fieldtype": "Password",
+   "label": "Kiosk Signing Secret",
+   "depends_on": "eval:doc.kiosk_enabled"
+  },
+  {
+   "fieldname": "kiosk_max_clock_drift_seconds",
+   "fieldtype": "Int",
+   "label": "Maximum Kiosk Clock Drift (Seconds)",
+   "default": "300",
+   "depends_on": "eval:doc.kiosk_enabled"
+  },
+  {
+   "fieldname": "kiosk_last_seen_on",
+   "fieldtype": "Datetime",
+   "label": "Kiosk Last Seen",
+   "read_only": 1
   },
   {
    "fieldname": "statutory_section",
@@ -229,6 +303,12 @@
    "fieldtype": "Data",
    "label": "PERKESO ASSIST URL",
    "default": "https://assist.perkeso.gov.my"
+  },
+  {
+   "fieldname": "hrd_corp_portal_url",
+   "fieldtype": "Data",
+   "label": "HRD Corp Portal URL",
+   "default": "https://etris.hrdcorp.gov.my"
   },
   {
    "fieldname": "components_section",
@@ -333,7 +413,7 @@
    "fieldname": "auto_create_employer_contribution_journal",
    "fieldtype": "Check",
    "label": "Automatically Create Employer Contribution Journal",
-   "default": "1"
+   "default": "0"
   },
   {
    "fieldname": "employer_epf_expense_account",
@@ -351,6 +431,12 @@
    "fieldname": "employer_eis_expense_account",
    "fieldtype": "Link",
    "label": "Employer EIS Expense Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "employer_hrd_expense_account",
+   "fieldtype": "Link",
+   "label": "HRD Corp Levy Expense Account",
    "options": "Account"
   },
   {
@@ -376,11 +462,17 @@
    "options": "Account"
   },
   {
+   "fieldname": "hrd_payable_account",
+   "fieldtype": "Link",
+   "label": "HRD Corp Levy Payable Account",
+   "options": "Account"
+  },
+  {
    "fieldname": "auto_generate_statutory_files_on_final_run",
    "fieldtype": "Check",
    "label": "Automatically Generate Statutory Files After Final Pay Run",
-   "default": "1",
-   "description": "Queues monthly LHDN, EPF and PERKESO file generation after a submitted final pay run."
+   "default": "0",
+   "description": "Queues monthly LHDN, EPF, PERKESO and HRD Corp preparation after a submitted final Payroll Entry."
   }
  ],
  "links": [],

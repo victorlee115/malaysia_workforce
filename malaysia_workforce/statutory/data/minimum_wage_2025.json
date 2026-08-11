@@ -1,0 +1,13 @@
+{
+  "reviewed_on": "2026-08-11",
+  "source": "Minimum Wages Order 2024 and JTKSM implementation guidance",
+  "source_url": "https://gajiminimum.mohr.gov.my/",
+  "target_employer_scope": "Employer with 10 or more employees",
+  "rates": [
+    {
+      "effective_from": "2025-02-01",
+      "monthly": "1700.00",
+      "hourly": "8.72"
+    }
+  ]
+}

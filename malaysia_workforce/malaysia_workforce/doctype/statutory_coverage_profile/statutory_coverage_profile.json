@@ -11,6 +11,9 @@
   "effective_from",
   "effective_until",
   "coverage_lines",
+  "exclusion_approval_evidence",
+  "exclusion_approved_by",
+  "exclusion_approved_on",
   "last_reviewed_on",
   "notes"
  ],
@@ -57,6 +60,24 @@
    "label": "Coverage",
    "options": "Statutory Coverage Line",
    "reqd": 1
+  },
+  {
+   "fieldname": "exclusion_approval_evidence",
+   "fieldtype": "Attach",
+   "label": "Exclusion Approval Evidence"
+  },
+  {
+   "fieldname": "exclusion_approved_by",
+   "fieldtype": "Link",
+   "label": "Exclusion Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "exclusion_approved_on",
+   "fieldtype": "Datetime",
+   "label": "Exclusion Approved On",
+   "read_only": 1
   },
   {
    "fieldname": "last_reviewed_on",
@@ -115,9 +136,6 @@
   {
    "role": "Malaysia Payroll User",
    "read": 1,
-   "create": 1,
-   "write": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -129,7 +147,6 @@
    "read": 1,
    "create": 1,
    "write": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,

@@ -1,4 +1,4 @@
-from malaysia_workforce.roster.skills import skill_matches
+from malaysia_workforce.staffing.skills import skill_matches
 
 
 def test_skill_matches_empty_requirement():

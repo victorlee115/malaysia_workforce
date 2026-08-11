@@ -1,0 +1,20 @@
+{
+ "actions": [], "creation": "2026-08-11 00:00:00.000000", "doctype": "DocType", "editable_grid": 1, "engine": "InnoDB",
+ "field_order": ["requirement_key","work_date","start_time","end_time","required_headcount","designation","required_skill","criticality","is_date_override","override_reason","allocated_headcount","uncovered_minutes"],
+ "fields": [
+  {"fieldname":"requirement_key","fieldtype":"Data","label":"Requirement Key","read_only":1,"hidden":1,"no_copy":1},
+  {"fieldname":"work_date","fieldtype":"Date","label":"Date","reqd":1,"in_list_view":1},
+  {"fieldname":"start_time","fieldtype":"Time","label":"Starts","reqd":1,"in_list_view":1},
+  {"fieldname":"end_time","fieldtype":"Time","label":"Ends","reqd":1,"in_list_view":1},
+  {"fieldname":"required_headcount","fieldtype":"Int","label":"Employees Needed","default":"1","reqd":1,"in_list_view":1},
+  {"fieldname":"designation","fieldtype":"Link","label":"Designation","options":"Designation","reqd":1},
+  {"fieldname":"required_skill","fieldtype":"Link","label":"Required Skill","options":"Skill"},
+  {"fieldname":"criticality","fieldtype":"Select","label":"Coverage","options":"Critical\nNormal","default":"Normal","reqd":1},
+  {"fieldname":"is_date_override","fieldtype":"Check","label":"Date Override","default":"0"},
+  {"fieldname":"override_reason","fieldtype":"Small Text","label":"Override Reason","depends_on":"is_date_override","mandatory_depends_on":"is_date_override"},
+  {"fieldname":"allocated_headcount","fieldtype":"Int","label":"Recommended","read_only":1},
+  {"fieldname":"uncovered_minutes","fieldtype":"Int","label":"Uncovered Minutes","read_only":1}
+ ],
+ "istable": 1, "links": [], "modified": "2026-08-11 00:00:00.000000", "modified_by": "Administrator", "module": "Malaysia Workforce",
+ "name": "Cafe Staffing Requirement", "owner": "Administrator", "permissions": [], "states": []
+}

@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-import pytest
+from malaysia_workforce.tests._assertions import raises
 
 from malaysia_workforce.payroll.pay_engine import ShiftPayInput, calculate_shift_pay
 
@@ -48,7 +48,7 @@ def test_unpaid_break_reduces_payable_time():
 
 
 def test_invalid_time_rejected():
-	with pytest.raises(ValueError, match="after"):
+	with raises(ValueError, match="after"):
 		calculate_shift_pay(args(actual_end=datetime(2026, 8, 1, 7, 0)))
 
 
@@ -84,7 +84,7 @@ def test_auto_verified_capped_time_reduces_pay_for_late_arrival():
 
 
 def test_breaks_cannot_exceed_worked_interval_and_nonfinite_rate_is_rejected():
-	with pytest.raises(ValueError, match="cannot exceed"):
+	with raises(ValueError, match="cannot exceed"):
 		calculate_shift_pay(args(unpaid_break_minutes=500, paid_break_minutes=101))
-	with pytest.raises(ValueError, match="finite"):
+	with raises(ValueError, match="finite"):
 		calculate_shift_pay(args(hourly_rate=Decimal("NaN")))

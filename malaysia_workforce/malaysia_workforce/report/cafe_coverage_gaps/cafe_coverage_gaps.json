@@ -1,0 +1,25 @@
+{
+ "add_total_row": 0,
+ "creation": "2026-08-11 00:00:00.000000",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "is_standard": "Yes",
+ "modified": "2026-08-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Malaysia Workforce",
+ "name": "Cafe Coverage Gaps",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Cafe Staffing Plan",
+ "report_name": "Cafe Coverage Gaps",
+ "report_type": "Script Report",
+ "roles": [
+  {"role":"System Manager"},
+  {"role":"HR Manager"},
+  {"role":"Malaysia HR Manager"},
+  {"role":"Outlet Manager"},
+  {"role":"Malaysia Payroll User"},
+  {"role":"Malaysia Workforce Auditor"}
+ ]
+}

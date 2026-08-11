@@ -31,31 +31,38 @@ def _is_rest_day(employee: str, work_date) -> bool:
 
 
 def on_shift_assignment_submit(doc, method=None):
-	if not getattr(doc, "custom_roster_selection", None):
+	if not getattr(doc, "custom_malaysia_staffing_plan", None):
 		return
 	existing = frappe.db.get_value("Shift Work Record", {"shift_assignment": doc.name, "docstatus": ["<", 2]}, "name")
 	if existing:
 		doc.db_set("custom_shift_work_record", existing, update_modified=False)
 		return
-	if not doc.custom_assigned_start_datetime or not doc.custom_assigned_end_datetime:
-		frappe.throw(_("Malaysia roster Shift Assignment is missing its assigned start or end time."))
+	shift = frappe.db.get_value("Shift Type", doc.shift_type, ["start_time", "end_time"], as_dict=True)
+	if not shift:
+		frappe.throw(_("Shift Assignment requires a valid Shift Type."))
+	from malaysia_workforce.staffing.intervals import coerce_time
+	from datetime import datetime
+
+	start = datetime.combine(getdate(doc.start_date), coerce_time(shift.start_time))
+	end = datetime.combine(getdate(doc.start_date), coerce_time(shift.end_time))
+	if end <= start:
+		end += timedelta(days=1)
 
 	record = frappe.new_doc("Shift Work Record")
 	record.employee = doc.employee
 	record.company = doc.company
-	record.roster = doc.custom_casual_roster
-	record.roster_selection = doc.custom_roster_selection
+	record.staffing_plan = doc.custom_malaysia_staffing_plan
+	record.staffing_recommendation_key = doc.custom_malaysia_staffing_recommendation_key
 	record.shift_assignment = doc.name
-	record.work_date = getdate(doc.custom_assigned_start_datetime)
-	record.scheduled_start = doc.custom_assigned_start_datetime
-	record.scheduled_end = doc.custom_assigned_end_datetime
-	record.rate_snapshot = doc.custom_assigned_hourly_rate
+	record.work_date = getdate(doc.start_date)
+	record.scheduled_start = start
+	record.scheduled_end = end
+	record.rate_snapshot = doc.custom_malaysia_rate_snapshot
 	record.is_public_holiday = _is_public_holiday(doc.employee, record.work_date)
 	record.is_rest_day = _is_rest_day(doc.employee, record.work_date)
 	record.status = "Pending Attendance"
 	record.insert(ignore_permissions=True)
 	doc.db_set("custom_shift_work_record", record.name, update_modified=False)
-	frappe.db.set_value("Roster Selection", doc.custom_roster_selection, "shift_work_record", record.name, update_modified=False)
 
 
 def on_shift_assignment_cancel(doc, method=None):
@@ -88,6 +95,46 @@ def on_employee_checkin(doc, method=None):
 	)
 
 
+def protect_employee_checkin_evidence(doc, method=None):
+	"""Keep signed kiosk events and correction proposals immutable through normal saves."""
+	before = doc.get_doc_before_save()
+	if not before:
+		return
+	if not before.custom_kiosk_event_id and not before.custom_malaysia_correction_pair_id:
+		return
+	protected = (
+		"employee",
+		"log_type",
+		"time",
+		"device_id",
+		"skip_auto_attendance",
+		"custom_shift_work_record",
+		"custom_kiosk_event_id",
+		"custom_kiosk_id",
+		"custom_device_timestamp",
+		"custom_server_received_timestamp",
+		"custom_kiosk_clock_drift_seconds",
+		"custom_kiosk_event_hash",
+		"custom_malaysia_correction_pair_id",
+		"custom_malaysia_correction_status",
+		"custom_malaysia_correction_explanation",
+		"custom_malaysia_correction_requested_by",
+		"custom_malaysia_correction_requested_on",
+		"custom_malaysia_correction_reviewed_by",
+		"custom_malaysia_correction_reviewed_on",
+		"custom_malaysia_correction_evidence",
+	)
+	if any(str(before.get(fieldname) or "") != str(doc.get(fieldname) or "") for fieldname in protected):
+		frappe.throw(_("Protected kiosk or attendance-correction evidence cannot be edited directly."))
+
+
+def prevent_employee_checkin_evidence_deletion(doc, method=None):
+	if doc.custom_kiosk_event_id or doc.custom_malaysia_correction_pair_id:
+		frappe.throw(
+			_("Protected kiosk and correction check-ins cannot be deleted. Use the evidenced correction workflow.")
+		)
+
+
 def _checkin_window(record):
 	before = int(frappe.db.get_single_value("Malaysia Workforce Settings", "checkin_grace_before_minutes") or 120)
 	after = int(frappe.db.get_single_value("Malaysia Workforce Settings", "checkout_grace_after_minutes") or 180)
@@ -99,7 +146,7 @@ def reconcile_employee_work_records(employee: str, reference_time=None):
 	if reference_time:
 		day = getdate(reference_time)
 		filters["work_date"] = ["between", [day - timedelta(days=1), day + timedelta(days=1)]]
-	for name in frappe.get_all("Shift Work Record", filters=filters, pluck="name", limit_page_length=100):
+	for name in frappe.get_all("Shift Work Record", filters=filters, pluck="name", limit=100):
 		reconcile_work_record(name)
 
 
@@ -114,16 +161,20 @@ def reconcile_work_record(name: str):
 	checkins = frappe.get_all(
 		"Employee Checkin",
 		filters={"employee": record.employee, "time": ["between", [window_start, window_end]], "skip_auto_attendance": 0},
-		fields=["name", "time", "log_type", "custom_shift_work_record", "custom_roster_selection"],
+		fields=["name", "time", "log_type", "custom_shift_work_record", "custom_malaysia_correction_status"],
 		order_by="time asc",
-		limit_page_length=100,
+		limit=100,
 	)
 	checkins = [
 		row
 		for row in checkins
-		if (not row.custom_shift_work_record or row.custom_shift_work_record == record.name)
-		and (not row.custom_roster_selection or row.custom_roster_selection == record.roster_selection)
+		if not row.custom_shift_work_record or row.custom_shift_work_record == record.name
 	]
+	approved_corrections = [
+		row for row in checkins if row.custom_malaysia_correction_status == "Approved"
+	]
+	if approved_corrections:
+		checkins = approved_corrections
 	ins = [row for row in checkins if row.log_type == "IN"]
 	outs = [row for row in checkins if row.log_type == "OUT"]
 	if ins and outs:
@@ -141,7 +192,7 @@ def reconcile_work_record(name: str):
 		frappe.db.set_value(
 			"Employee Checkin",
 			check_in.name,
-			{"custom_shift_work_record": record.name, "custom_roster_selection": record.roster_selection},
+			{"custom_shift_work_record": record.name},
 			update_modified=False,
 		)
 	if check_out:
@@ -149,7 +200,7 @@ def reconcile_work_record(name: str):
 		frappe.db.set_value(
 			"Employee Checkin",
 			check_out.name,
-			{"custom_shift_work_record": record.name, "custom_roster_selection": record.roster_selection},
+			{"custom_shift_work_record": record.name},
 			update_modified=False,
 		)
 

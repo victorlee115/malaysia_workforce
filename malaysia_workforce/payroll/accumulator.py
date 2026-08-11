@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 
 import frappe
@@ -7,6 +8,11 @@ from frappe import _
 from frappe.utils import get_first_day
 
 from malaysia_workforce.statutory.snapshot import parse_statutory_snapshot
+from malaysia_workforce.utils import select_for_update
+
+
+def _accumulator_key(employee: str, company: str, month) -> str:
+	return hashlib.sha256(f"{company}|{employee}|{month}".encode()).hexdigest()
 
 
 def update_accumulator_from_salary_slip(doc) -> str | None:
@@ -19,9 +25,14 @@ def update_accumulator_from_salary_slip(doc) -> str | None:
 			_("Salary Slip {0} has an invalid Malaysia statutory snapshot: {1}").format(doc.name, exc)
 		)
 	month = get_first_day(doc.end_date)
+	key = _accumulator_key(doc.employee, doc.company, month)
+	select_for_update(
+		"SELECT name FROM `tabMonthly Statutory Accumulator` WHERE accumulator_key=%s",
+		(key,),
+	)
 	name = frappe.db.get_value(
 		"Monthly Statutory Accumulator",
-		{"employee": doc.employee, "company": doc.company, "contribution_month": month, "status": ["in", ["Open", "Frozen"]]},
+		{"accumulator_key": key, "status": ["in", ["Open", "Frozen"]]},
 		"name",
 	)
 	acc = frappe.get_doc("Monthly Statutory Accumulator", name) if name else frappe.new_doc("Monthly Statutory Accumulator")
@@ -29,6 +40,7 @@ def update_accumulator_from_salary_slip(doc) -> str | None:
 		acc.employee = doc.employee
 		acc.company = doc.company
 		acc.contribution_month = month
+		acc.accumulator_key = key
 		acc.status = "Open"
 	# Idempotent replacement by source reference.
 	acc.set("items", [row for row in acc.items if not (row.source_doctype == "Salary Slip" and row.source_name == doc.name)])
@@ -43,6 +55,7 @@ def update_accumulator_from_salary_slip(doc) -> str | None:
 			"epf_wages": bases.get("epf", 0),
 			"socso_wages": bases.get("socso", 0),
 			"eis_wages": bases.get("eis", 0),
+			"hrd_wages": bases.get("hrd", 0),
 			"pcb_regular": bases.get("pcb_regular", 0),
 			"pcb_additional": bases.get("pcb_additional", 0),
 		},
@@ -57,9 +70,14 @@ def update_accumulator_from_salary_slip(doc) -> str | None:
 
 def remove_salary_slip_from_accumulator(doc) -> None:
 	month = get_first_day(doc.end_date)
+	key = _accumulator_key(doc.employee, doc.company, month)
+	select_for_update(
+		"SELECT name FROM `tabMonthly Statutory Accumulator` WHERE accumulator_key=%s",
+		(key,),
+	)
 	name = frappe.db.get_value(
 		"Monthly Statutory Accumulator",
-		{"employee": doc.employee, "company": doc.company, "contribution_month": month, "status": ["in", ["Open", "Frozen"]]},
+		{"accumulator_key": key, "status": ["in", ["Open", "Frozen"]]},
 		"name",
 	)
 	if not name:
@@ -69,4 +87,8 @@ def remove_salary_slip_from_accumulator(doc) -> None:
 	if acc.items:
 		acc.save(ignore_permissions=True)
 	else:
-		frappe.delete_doc("Monthly Statutory Accumulator", acc.name, ignore_permissions=True)
+		frappe.flags.malaysia_accumulator_cleanup = True
+		try:
+			frappe.delete_doc("Monthly Statutory Accumulator", acc.name, ignore_permissions=True)
+		finally:
+			frappe.flags.malaysia_accumulator_cleanup = False

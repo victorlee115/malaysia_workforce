@@ -39,15 +39,19 @@ class ShiftWorkRecord(Document):
 		assignment = frappe.db.get_value(
 			"Shift Assignment",
 			self.shift_assignment,
-			["employee", "company", "custom_roster_selection"],
+			["employee", "company", "custom_malaysia_staffing_plan", "custom_malaysia_staffing_recommendation_key"],
 			as_dict=True,
 		)
 		if not assignment:
 			frappe.throw(_("Linked Shift Assignment does not exist."))
 		if assignment.employee != self.employee or assignment.company != self.company:
 			frappe.throw(_("Shift Work Record does not match its Shift Assignment."))
-		if self.roster_selection and assignment.custom_roster_selection != self.roster_selection:
-			frappe.throw(_("Roster Selection does not match the Shift Assignment."))
+		if not assignment.custom_malaysia_staffing_plan or not assignment.custom_malaysia_staffing_recommendation_key:
+			frappe.throw(_("Shift Work Records are created only from an approved Cafe Staffing Plan."))
+		if self.staffing_plan != assignment.custom_malaysia_staffing_plan:
+			frappe.throw(_("Staffing Plan does not match the Shift Assignment."))
+		if self.staffing_recommendation_key != assignment.custom_malaysia_staffing_recommendation_key:
+			frappe.throw(_("Staffing recommendation does not match the Shift Assignment."))
 
 	def _calculate_pay(self):
 		agreement = get_work_agreement(self.employee, self.work_date, required=True)
@@ -56,7 +60,7 @@ class ShiftWorkRecord(Document):
 		actual_end = get_datetime(self.actual_check_out)
 		scheduled_start = get_datetime(self.scheduled_start)
 		scheduled_end = get_datetime(self.scheduled_end)
-		effective_start, effective_end, pay_basis = select_pay_interval(
+		effective_start, effective_end, interval_policy = select_pay_interval(
 			actual_start=actual_start,
 			actual_end=actual_end,
 			scheduled_start=scheduled_start,
@@ -73,6 +77,11 @@ class ShiftWorkRecord(Document):
 				paid_break_minutes=self.paid_break_minutes or 0,
 				normal_part_time_daily_hours=agreement.get("normal_daily_hours") or 0,
 				comparable_full_time_daily_hours=agreement.get("comparable_full_time_daily_hours") or 0,
+				work_arrangement=agreement.get("work_arrangement") or "",
+				pay_basis=agreement.get("pay_basis") or "",
+				regularity=agreement.get("regularity") or "",
+				normal_weekly_hours=agreement.get("normal_weekly_hours") or 0,
+				comparable_full_time_weekly_hours=agreement.get("comparable_full_time_weekly_hours") or 0,
 				is_rest_day=bool(self.is_rest_day),
 				is_public_holiday=bool(self.is_public_holiday),
 			)
@@ -86,7 +95,9 @@ class ShiftWorkRecord(Document):
 		self.gross_pay = result.gross_pay
 		self.set("pay_breakdown", [])
 		for line in result.lines:
-			self.append("pay_breakdown", line.to_dict())
+			line_values = line.to_dict()
+			line_values["salary_component"] = line_values.pop("component")
+			self.append("pay_breakdown", line_values)
 		snapshot = result.to_dict()
 		snapshot.update(
 			{
@@ -96,7 +107,14 @@ class ShiftWorkRecord(Document):
 				"scheduled_end": scheduled_end.isoformat(),
 				"effective_pay_start": effective_start.isoformat(),
 				"effective_pay_end": effective_end.isoformat(),
-				"pay_basis": pay_basis,
+				"attendance_pay_interval_policy": interval_policy,
+				"agreement_pay_basis": agreement.get("pay_basis"),
+				"work_arrangement": agreement.get("work_arrangement"),
+				"rule_profile": (
+					"PART_TIME_REGULATIONS_2010"
+					if agreement.get("work_arrangement") == "Part Time"
+					else "CASUAL_CONTRACT_RATE"
+				),
 			}
 		)
 		self.calculation_snapshot = json.dumps(snapshot, sort_keys=True)
@@ -106,6 +124,19 @@ class ShiftWorkRecord(Document):
 			frappe.throw(_("Only approved or automatically verified work records can be submitted."))
 		if not self.actual_check_in or not self.actual_check_out:
 			frappe.throw(_("Actual Check In and Actual Check Out are required before submission."))
+		attendance = frappe.db.get_value(
+			"Attendance",
+			{
+				"employee": self.employee,
+				"attendance_date": self.work_date,
+				"docstatus": 1,
+				"status": ["in", ["Present", "Half Day"]],
+			},
+			"name",
+		)
+		if not attendance:
+			frappe.throw(_("Submit the standard Attendance record before approving this payroll breakdown."))
+		self.attendance = attendance
 		self.approved_by = self.approved_by or frappe.session.user
 		self.approved_on = self.approved_on or now_datetime()
 
@@ -115,3 +146,7 @@ class ShiftWorkRecord(Document):
 
 	def on_cancel(self):
 		self.db_set("status", "Cancelled", update_modified=False)
+
+	def on_trash(self):
+		if self.shift_assignment:
+			frappe.throw(_("A derived Shift Work Record cannot be deleted; cancel it with retained audit history."))

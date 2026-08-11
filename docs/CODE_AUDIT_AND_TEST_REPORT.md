@@ -1,5 +1,7 @@
 # Code audit and test report
 
+> Historical RC4 report. It is retained as prior-release evidence and must not be treated as the RC7 production decision. See `RELEASE_VALIDATION.md` for the current candidate.
+
 **Application:** Malaysia Workforce  
 **Audited release:** 1.0.0-rc.4  
 **Date:** 2026-07-29
@@ -14,7 +16,7 @@ A live Frappe bench was unavailable, so this report distinguishes completed sour
 
 ### Critical/high
 
-1. **Roster data isolation:** employee reads could expose open rosters from another company, while Roster Manager access was not restricted to the roster's assigned manager. Query conditions and document permission checks now enforce company and manager scope.
+1. **Staffing data isolation:** employee availability and staffing-plan reads are constrained by Employee, Company, Branch and accountable Outlet Manager permissions.
 2. **Duplicate payroll risk:** two payroll runs could select the same approved Shift Work Record. RC2 locks and reserves payable rows with `SELECT ... FOR UPDATE`, records ownership and uses frozen source hashes.
 3. **Incorrect payroll lifecycle:** Frappe HR submits Payroll Entry before its generated Salary Slips. Statutory files and employer journals were therefore being triggered too early. RC2 finalises only after every expected linked Salary Slip is submitted, under a run lock and idempotency checks.
 4. **Unapproved time could be paid:** early arrival and late departure could enlarge automatically verified pay. The default policy now caps payable time to the confirmed assignment while still reducing pay for lateness or early departure.
