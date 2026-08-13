@@ -103,7 +103,7 @@ def check_no_stale_release_markers() -> None:
 		"malaysia_workforce/install.py",
 	):
 		text = (ROOT / relative).read_text(encoding="utf-8")
-		for marker in ("1.0.0-rc.9", "1.0.0rc9"):
+		for marker in ("1.0.0-rc.10", "1.0.0rc10"):
 			if marker in text:
 				fail(f"Stale release marker {marker} in {relative}")
 

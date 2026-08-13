@@ -1,6 +1,6 @@
 # Release validation report
 
-**Release:** 1.0.0-rc.10
+**Release:** 1.0.0-rc.11
 
 **Validation date:** 2026-08-13
 
@@ -8,7 +8,7 @@
 
 ## Decision
 
-RC10 is a lean, existing-site MariaDB- and Chrome-tested staging/UAT candidate. Employee TP1/TP3 self-service and multiple previous employers now pass, but the release is **not production ready** while clean upstream site bootstrap, external authority acceptance, parallel payroll, recovery/security drills and specialist sign-off remain open.
+RC11 is a lean, existing-site MariaDB- and Chrome-tested staging/UAT candidate. Employee TP1/TP3 self-service and payslip PDF download now pass, but the release is **not production ready** while clean upstream site bootstrap, external authority acceptance, parallel payroll, recovery/security drills and specialist sign-off remain open.
 
 ## Architecture verified
 

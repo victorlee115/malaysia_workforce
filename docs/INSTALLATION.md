@@ -23,6 +23,15 @@ The app creates only five Malaysian business records: TP1, TP3, CP38, Statutory 
 
 It does not alter framework source files or create a custom Employee/Profile/Contract/Payroll Entry replacement.
 
+## Payslip PDFs
+
+Employee self-service payslips use the standard HRMS download endpoint. When
+`wkhtmltopdf` is installed, Frappe uses it as usual. When it is not installed,
+this app selects Frappe v16's native headless-Chrome renderer so local and
+minimal deployments do not fail with a missing `wkhtmltopdf` executable. For
+production, pre-provision the Frappe-managed headless Chromium binary during
+deployment and verify a Salary Slip PDF before enabling employee self-service.
+
 ## Initial verification
 
 ```bash

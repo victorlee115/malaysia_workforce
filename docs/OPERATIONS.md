@@ -8,6 +8,11 @@
 4. Submit Payroll Entry and create/submit Salary Slips through normal HRMS actions.
 5. Review each Salary Slip's deductions and `Statutory Results` table.
 6. Complete the normal Frappe HR payroll and accounting workflow with the organisation's maker/checker approvals.
+
+Payslip PDF downloads use Frappe's standard renderer selection: `wkhtmltopdf`
+when available, otherwise the native headless-Chrome renderer. Treat a failed
+PDF as an infrastructure alert and check the renderer binary and worker logs;
+it does not change the stored Salary Slip calculation.
 7. Continue with the bank's approved payment procedure. This app does not transmit money.
 
 ## Overtime and special days

@@ -10,6 +10,14 @@ after_install = "malaysia_workforce.install.after_install"
 before_migrate = "malaysia_workforce.install.before_migrate"
 after_migrate = "malaysia_workforce.install.after_migrate"
 
+# HRMS' employee payslip endpoint defaults to wkhtmltopdf even when Frappe's
+# native Chrome renderer is available.  Use the standard renderer when the
+# host provides it, and fall back to Frappe's supported Chrome renderer on
+# developer machines and deployments that do not install wkhtmltopdf.
+override_whitelisted_methods = {
+	"hrms.api._download_pdf": "malaysia_workforce.payroll.pdf.download_salary_slip_pdf",
+}
+
 doc_events = {
 	"Company": {
 		"validate": "malaysia_workforce.payroll.validation.validate_company",

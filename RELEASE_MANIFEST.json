@@ -1,8 +1,8 @@
 {
   "app": "malaysia_workforce",
-  "version": "1.0.0-rc.10",
+  "version": "1.0.0-rc.11",
   "generated_on": "2026-08-13",
-  "file_count": 138,
+  "file_count": 139,
   "files": [
     {
       "path": ".editorconfig",
@@ -26,13 +26,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 5404,
-      "sha256": "8672a32c626c09fd42ab1660047f85c4b06b895292618a09446926cdfbf02838"
+      "size": 5748,
+      "sha256": "7c3830e504a203bbd19fc986b9cc148db1a03e2d2ef89ddae031058341eadf40"
     },
     {
       "path": "README.md",
       "size": 3668,
-      "sha256": "488b406a7e54771d8144218660f9a289afc88720131458ae319c31738afac628"
+      "sha256": "208280c9630dda69622ab762dbb4da2de6355295386b0d8e4da4d08553b31c05"
     },
     {
       "path": "compatibility-lock.json",
@@ -56,13 +56,13 @@
     },
     {
       "path": "docs/INSTALLATION.md",
-      "size": 1592,
-      "sha256": "cac3ae7c751818d32b3c6891c6be0392329eecebef0f89a0af9b2a3e5e1e9617"
+      "size": 2074,
+      "sha256": "5731ee738ef3ee806c3a6adaaf1ec6169d6926ca72873ffb9290f9f8cfb33805"
     },
     {
       "path": "docs/ISOLATED_E2E_TEST_REPORT.md",
-      "size": 7374,
-      "sha256": "37dd2538663c4b040aa0f859dbb07f877c1e8fb16bbccbf872be8390e12a6e2e"
+      "size": 7569,
+      "sha256": "e0f81dc6dd5300490b6bfecccc9d7548ad08d12c4cea3edd61a338fc16dd14c9"
     },
     {
       "path": "docs/LEGAL_AND_STATUTORY.md",
@@ -71,13 +71,13 @@
     },
     {
       "path": "docs/OPERATIONS.md",
-      "size": 2133,
-      "sha256": "54bc7fcc04872461796cfe15593b4ef0de2a89511b9d9a6bf00f7e11338c3899"
+      "size": 2423,
+      "sha256": "ef8cbb5f13bf7fda2fd9e7400f7e6d93041d5facc605c518682326c4aaa79295"
     },
     {
       "path": "docs/RELEASE_VALIDATION.md",
-      "size": 4294,
-      "sha256": "0eebc200937761eb9f25f83b3164f3311366e3a0540f6d0f49a2a3d3f4f9e2eb"
+      "size": 4287,
+      "sha256": "2189cb5dc910fe34aa7a4ecac74befd6cea2636752ed77f1486ac069126907a7"
     },
     {
       "path": "docs/SECURITY.md",
@@ -107,7 +107,7 @@
     {
       "path": "malaysia_workforce/__init__.py",
       "size": 26,
-      "sha256": "216a456e508f63fd17e070e2eda168d5fcb98388b350a813247a8a485cf65506"
+      "sha256": "8e8a9665fd745e3b5eea6e01e9d07371975150727a2495d6317628c2f64b0f15"
     },
     {
       "path": "malaysia_workforce/api/__init__.py",
@@ -121,8 +121,8 @@
     },
     {
       "path": "malaysia_workforce/hooks.py",
-      "size": 2115,
-      "sha256": "31adfa7155d0d3773b17ac59c8afbefb03631bbb65e1aa02223b42fcf4565f8b"
+      "size": 2534,
+      "sha256": "8c25a40ace60579996c4a6f0c1dddc162a6801a67ea78384d82570bfd1ab36aa"
     },
     {
       "path": "malaysia_workforce/install.py",
@@ -440,6 +440,11 @@
       "sha256": "d578edbed7063451d139b17456c22a668ab5b09dd2d5fe2d151dae222f88e5d0"
     },
     {
+      "path": "malaysia_workforce/payroll/pdf.py",
+      "size": 1380,
+      "sha256": "01f2f657f5493b112a9d4dc8a8bf1e4792277c2ead9613944a8be1fe290d9705"
+    },
+    {
       "path": "malaysia_workforce/payroll/salary_slip.py",
       "size": 18334,
       "sha256": "63179bc26181b96c1a6e5a5e8399ec62e0902bba55a6073391c7d8e4e4206ffa"
@@ -656,8 +661,8 @@
     },
     {
       "path": "malaysia_workforce/tests/test_templates_and_json.py",
-      "size": 7969,
-      "sha256": "b50974013aacb56bc5a52319cd7ed0c88c606de19b289d7b6491f2e0ed1615cf"
+      "size": 8511,
+      "sha256": "cdb951cf9e2cb6c4e0c1bd4bef7ea3cbbd2d2e4c2036c51d2351fa5c8a6c0b77"
     },
     {
       "path": "malaysia_workforce/tests/test_wages.py",
@@ -672,7 +677,7 @@
     {
       "path": "package.json",
       "size": 299,
-      "sha256": "2de6fbff8cd2df8377b14daf424aa0721467be97064214e1881010f05cf37905"
+      "sha256": "1a40216cf671fd063e6ef60fb707c8abe84119d0f4f4b21dc51b54d0c3155ada"
     },
     {
       "path": "pyproject.toml",
@@ -691,8 +696,8 @@
     },
     {
       "path": "scripts/verify_release.py",
-      "size": 11845,
-      "sha256": "ac7d9605e9c86f3ab48fc4955d74cee9c5acb6026ba6f6c6ee402fd3ee90240c"
+      "size": 11847,
+      "sha256": "c93857e129092fec6f7ebc16c8cebb5e443e487d4846195245154cdde4172d3d"
     }
   ]
 }

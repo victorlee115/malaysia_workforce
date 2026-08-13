@@ -1,6 +1,6 @@
 # Malaysia Payroll for Frappe HR
 
-**Version:** 1.0.0-rc.10
+**Version:** 1.0.0-rc.11
 
 **Tested stack:** Frappe 16.31.0, ERPNext 16.31.1, HRMS 16.16.0, Python 3.14, Node 24, MariaDB 11.4
 **Licence:** GPL-3.0-or-later

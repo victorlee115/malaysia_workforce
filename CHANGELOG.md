@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0-rc.11 — 2026-08-13
+
+- Fixed employee payslip PDF downloads on hosts without `wkhtmltopdf` by selecting Frappe v16's native headless-Chrome renderer through a narrowly scoped HRMS endpoint hook.
+- Kept `wkhtmltopdf` as the first choice when the host provides it and documented production Chromium provisioning and PDF smoke testing.
+
 ## 1.0.0-rc.10 — 2026-08-13
 
 - Completed the native employee TP1/TP3 handoff: the standard Web Form now saves the declaration and immediately applies Frappe's `Send for Review` Workflow action, with retry-safe server authorization and a clear success page.

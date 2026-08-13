@@ -9,7 +9,7 @@
 - Frappe 16.31.0 (`6a329d068416768ec47ccd3326b9cc95a8d7bf99`)
 - ERPNext 16.31.1 (`22247ab7c57ab51b5e05c274e85321402d133a64`)
 - HRMS 16.16.0 (`f281e8b172ac8836ad89c59df65a922101103097`)
-- Malaysia Workforce 1.0.0rc10 from the working tree
+- Malaysia Workforce 1.0.0rc11 from the working tree
 - Python 3.14.7, Node 24 and MariaDB 11.4.12
 - Isolated site: `mw-mariadb.localhost`
 
@@ -44,6 +44,7 @@ Chrome was used directly; Browser and Computer Use fallbacks were not needed.
 - Clicked Home, Attendance, Leaves, Expenses, Salary and Profile, plus new Attendance Request, Shift Request, Leave Application, Expense Claim and Employee Advance forms. Every screen rendered without a fresh browser error.
 - Opened the Shift Type, Leave Type, Expense Approver and Currency selectors without permission failures.
 - Viewed the standard 2026 Payroll Period, year-to-date amount and three own submitted Salary Slips through the unmodified HRMS PWA.
+- Downloaded a submitted Salary Slip PDF through the native HRMS action; the app selected Frappe's native headless-Chrome renderer because the isolated host did not have `wkhtmltopdf` installed.
 - Opened TP1 and TP3 through direct standard Web Form links; the employee has no custom portal or Desk Workspace.
 - Created TP1 and TP3 with Employee and Company derived from the signed-in active Employee on the server, and tax year/currency defaulted without exposing those identities for editing.
 - Verified that a new TP1 begins with no misleading relief row and shows relief code, amount, claim month and receipt in the native child table.

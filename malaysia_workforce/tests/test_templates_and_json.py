@@ -66,9 +66,19 @@ def test_employee_self_service_compatibility_is_narrow_and_native():
 		"Malaysia Tax Declaration TP1",
 		"Malaysia Previous Employment TP3",
 	}
-	assert "override_whitelisted_methods" not in hooks
+	assert hooks.count("override_whitelisted_methods") == 1
+	assert '"hrms.api._download_pdf": "malaysia_workforce.payroll.pdf.download_salary_slip_pdf"' in hooks
 	assert "website_redirects" not in hooks
 	assert not (ROOT / "malaysia_workforce" / "hrms_compat.py").exists()
+
+
+def test_payslip_pdf_override_is_limited_to_the_native_hrms_endpoint():
+	hooks = (ROOT / "malaysia_workforce" / "hooks.py").read_text()
+	pdf = (ROOT / "malaysia_workforce" / "payroll" / "pdf.py").read_text()
+
+	assert '"hrms.api._download_pdf": "malaysia_workforce.payroll.pdf.download_salary_slip_pdf"' in hooks
+	assert "doctype != \"Salary Slip\"" in pdf
+	assert '"wkhtmltopdf" if shutil.which("wkhtmltopdf") else "chrome"' in pdf
 
 
 def test_tax_permission_refresh_is_one_time_and_narrow():
