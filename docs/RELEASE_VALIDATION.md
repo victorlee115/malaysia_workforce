@@ -1,55 +1,54 @@
 # Release validation report
 
-**Release:** 1.0.0-rc.7
+**Release:** 1.0.0-rc.10
 
-**Validation date:** 2026-08-12
+**Validation date:** 2026-08-13
 
-**Target candidate:** Frappe 16.19.0 / ERPNext 16.20.0 / HRMS 16.7.1 / Python 3.14 / Node 24 / MariaDB 11.4
+**Pinned stack:** Frappe 16.31.0 / ERPNext 16.31.1 / HRMS 16.16.0 / Python 3.14 / Node 24 / MariaDB 11.4
 
-## Completed
+## Decision
 
-- All Python sources compiled, all checked JavaScript passed syntax validation and the pure suite passed 62 tests.
-- A clean MariaDB site installed the exact pinned framework apps followed by Malaysia Workforce.
-- The complete live app suite passed eight tests on MariaDB 11.4.12.
-- Two consecutive migrations, the app asset build and pinned-stack diagnostics passed.
-- MariaDB was verified as `REPEATABLE-READ` with `utf8mb4` / `utf8mb4_unicode_ci`.
-- Dependency repositories remained clean; the app uses hooks, custom fields, fixtures and standard client extensions only.
-- Chrome acceptance passed for employee, outlet manager, payroll processor, HR Manager releaser and auditor roles.
-- A standard Payroll Entry produced and submitted a standard Salary Slip with Malaysian statutory deductions and an idempotent UAT-only bank artifact.
-- Human release correctly stopped at the unsigned company production-activation gate.
-- Statutory source-table hashes matched `source_manifest.json`.
+RC10 is a lean, existing-site MariaDB- and Chrome-tested staging/UAT candidate. Employee TP1/TP3 self-service and multiple previous employers now pass, but the release is **not production ready** while clean upstream site bootstrap, external authority acceptance, parallel payroll, recovery/security drills and specialist sign-off remain open.
 
-See `ISOLATED_E2E_TEST_REPORT.md` for role-by-role evidence and exact environment details.
+## Architecture verified
 
-## RC7 architecture and controls
+Standard Frappe HR remains authoritative for Employee, Contract, Salary Structure, Additional Salary, Overtime Slip, Payroll Entry and Salary Slip. The app adds Malaysian fields, calculations, tax inputs and filing preparation to those workflows.
 
-RC7 keeps standard Frappe HR authoritative and removes the former duplicate roster and payroll-run surfaces. Malaysia Workforce now supplies only native availability, coverage planning, deterministic casual allocation, Malaysian rules and evidence/release controls around standard Shift Assignment, Employee Checkin, Attendance, Payroll Entry and Salary Slip records.
+The former availability, staffing, roster, employee-profile, work-agreement, shift-work-record, kiosk, bank and parallel payroll-run features have been removed. Migration patches retire their DocTypes, fields, workspace and roles.
 
-Separated standard permissions let payroll processors operate Payroll Entry while releasers and auditors remain read-only. Client actions mirror the server roles: processors prepare Malaysia inputs and bank files; HR Managers release and reconcile; auditors receive no mutating action. Frappe's own submitted-document probe is skipped for read-only viewers instead of granting them unsafe submit permission.
+## Completed checks
 
-The availability and Staffing Plan screens use standard Frappe Web Form, Desk Form, Workflow, List View, Workspace and Query Report patterns. Published schedules are ordinary HRMS shifts and are viewed in the normal HRMS roster/PWA.
+- Pure calculator, data-integrity, wage and template tests.
+- Python compilation and JavaScript syntax validation. The app ships no standalone frontend bundle; its Desk JavaScript is loaded through standard DocType hooks.
+- Two consecutive migrations on the isolated MariaDB existing site.
+- Standard Payroll Entry → Salary Slip live scenario with submit-time readiness validation.
+- Unsupported/incomplete setup rejection and statutory-filing source-tamper detection.
+- Cross-company report permission isolation and identity-sensitive filing fingerprints.
+- LINDUNG release-window, multiple-employer, HRD headcount, TP3 evidence and CP38 remaining-balance guardrails.
+- Calendar-month overtime aggregation across non-overlapping pending/submitted slips.
+- Employee TP1/TP3 Web Form save → native `Send for Review` Workflow handoff, including retry safety, HR approval and two distinct previous employers.
+- Monthly/full-time and hourly/part-time overtime integration through standard Overtime Slip and Additional Salary.
+- EPF, PERKESO, LHDN and HRD Corp preparation/reconciliation state machines.
+- Company/Employee permissions and read-only Auditor behaviour.
+- Chrome desktop/mobile role-screen acceptance, including TP1 and TP3 submission at 390 × 844 with no horizontal overflow and native HR Workflow actions; see [the isolated test report](ISOLATED_E2E_TEST_REPORT.md).
+- Source-table checksum, working-tree verification and exact working-tree Git-archive verification. A clean signed tag remains a release gate.
 
 ## Statutory calculation checks
 
-The Python 3.14 suite passes the bundled LHDN PCB worked-example targets:
+Bundled LHDN PCB examples cover ordinary cumulative remuneration, TP1 relief and additional remuneration. The suite also covers effective-dated EPF, SOCSO/LINDUNG, EIS, HRD levy, minimum wage, monthly incomplete-month pay, hourly/daily wages, overtime, rest-day and public-holiday calculations, controlled TP1/TP3 relief codes, CP38, zakat rebate, invalid numeric data and unsupported scope rejection. LINDUNG 24 Jam coverage includes the opt-out default, the 1 June 2026 start, existing/new-employee release windows and unsupported multiple-employer rejection.
 
-| Case | Expected | Result |
-| --- | ---: | --- |
-| January normal remuneration | RM110.00 | Pass |
-| February cumulative | RM110.00 | Pass |
-| March with TP1 relief | RM108.20 | Pass |
-| April with bonus/additional remuneration | RM833.70 | Pass |
+These tests validate deterministic software behaviour against the bundled reviewed rule pack. They are not statutory certification.
 
-The suite also checks EPF, SOCSO/LINDUNG, EIS, HRD levy, minimum wage, flexible-worker pay boundaries, TP1 controls, effective dates, statutory record constraints, malformed snapshots and invalid numeric input.
+## Known blocker
 
-## External production blocks
+Pinned Frappe 16.31.0 currently fails a brand-new MariaDB site bootstrap before this app is installed because the framework inserts the DocType field `protect_attached_files` before its bootstrap table contains that column. Existing-site migration succeeds. No local core patch is included; retest and update the compatibility lock when an official Frappe release resolves the mismatch.
 
-No production bank or employer authority credentials can be selected from repository context. Company activation therefore rejects the generic UAT CSV and requires an installed bank-specific adapter plus acceptance evidence. EPF uses a current i-Akaun preparation worksheet; the retired e-Caruman artifact remains UAT-only.
+## External gates
 
-Foreign workers, Sabah, Sarawak and unsupported PCB regimes fail closed. Full-time/monthly payroll remains standard Frappe HR; custom flexible-work pay is limited to reviewed hourly part-time/casual agreements.
+- Clean installation on an official compatible pinned stack.
+- Official portal/validator UAT for EPF i-Akaun, PERKESO/ASSIST, LHDN and HRD Corp artifacts.
+- Two parallel payroll periods and one off-cycle or year-boundary case with zero unexplained employee or authority differences.
+- Backup restoration, concurrency, security, permission and failure-recovery drills.
+- Written Malaysian payroll specialist and employer acceptance.
 
-Production still requires bank/authority UAT, two parallel payroll periods, an off-cycle or year-boundary simulation, recovery/security/concurrency drills, the configured standard HRMS lifecycle tests and specialist sign-off.
-
-## Release decision
-
-RC7 is approved as a **MariaDB-tested staging/UAT release candidate**. It is not production activated until every gate in `VALIDATION.md` and the signed Company activation checklist passes.
+Live deployment must remain blocked until every gate in [VALIDATION.md](VALIDATION.md) is evidenced.

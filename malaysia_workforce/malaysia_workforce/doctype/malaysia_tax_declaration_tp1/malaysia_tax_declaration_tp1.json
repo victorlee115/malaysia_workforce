@@ -1,191 +1,30 @@
 {
- "actions": [],
- "allow_import": 1,
- "creation": "2026-07-29 00:00:00.000000",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "naming_series",
-  "employee",
-  "company",
-  "tax_year",
-  "declaration_date",
-  "status",
-  "relief_claims",
-  "total_reliefs",
-  "employee_declaration",
-  "manual_review_notes",
-  "manual_review_approved_by",
-  "manual_review_approved_on"
+ "doctype":"DocType", "name":"Malaysia Tax Declaration TP1", "module":"Malaysia Workforce", "engine":"InnoDB",
+ "autoname":"naming_series:", "title_field":"employee", "track_changes":1, "allow_import":1, "is_submittable":1,
+ "field_order":["naming_series","employee","company","currency","tax_year","declaration_date","relief_section","relief_claims","total_reliefs","declaration_section","employee_declaration","review_section","manual_review_notes","manual_review_approved_by","manual_review_approved_on","amended_from"],
+ "fields":[
+  {"fieldname":"naming_series","label":"Series","fieldtype":"Select","options":"MY-TP1-.YYYY.-.#####","default":"MY-TP1-.YYYY.-.#####","reqd":1},
+  {"fieldname":"employee","label":"Employee","fieldtype":"Link","options":"Employee","reqd":1,"in_list_view":1},
+  {"fieldname":"company","label":"Company","fieldtype":"Link","options":"Company","fetch_from":"employee.company","reqd":1},
+  {"fieldname":"currency","label":"Currency","fieldtype":"Data","default":"MYR","read_only":1,"hidden":1},
+  {"fieldname":"tax_year","label":"Tax Year","fieldtype":"Int","reqd":1,"in_list_view":1},
+  {"fieldname":"declaration_date","label":"Declaration Date","fieldtype":"Date","default":"Today","reqd":1},
+  {"fieldname":"relief_section","label":"Reliefs Claimed This Year","fieldtype":"Section Break"},
+  {"fieldname":"relief_claims","label":"Relief Claims","fieldtype":"Table","options":"Malaysia Tax Relief Claim","description":"Add only reliefs you wish to claim. Open a row to see the relief name and attach its receipt or evidence."},
+  {"fieldname":"total_reliefs","label":"Total Reliefs","fieldtype":"Currency","options":"currency","read_only":1},
+  {"fieldname":"declaration_section","label":"Employee Declaration","fieldtype":"Section Break"},
+  {"fieldname":"employee_declaration","label":"I declare that this information is true and complete","fieldtype":"Check","default":"0"},
+  {"fieldname":"review_section","label":"Employer Review","fieldtype":"Section Break","collapsible":1,"collapsed":1},
+  {"fieldname":"manual_review_notes","label":"Eligibility or Sub-limit Review Notes","fieldtype":"Small Text"},
+  {"fieldname":"manual_review_approved_by","label":"Reviewed By","fieldtype":"Link","options":"User","read_only":1,"no_copy":1},
+  {"fieldname":"manual_review_approved_on","label":"Reviewed On","fieldtype":"Datetime","read_only":1,"no_copy":1},
+  {"fieldname":"amended_from","label":"Amended From","fieldtype":"Link","options":"Malaysia Tax Declaration TP1","read_only":1,"no_copy":1}
  ],
- "fields": [
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "label": "Series",
-   "options": "MW-TP1-.YYYY.-.#####",
-   "default": "MW-TP1-.YYYY.-.#####",
-   "reqd": 1
-  },
-  {
-   "fieldname": "employee",
-   "fieldtype": "Link",
-   "label": "Employee",
-   "options": "Employee",
-   "reqd": 1,
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "company",
-   "fieldtype": "Link",
-   "label": "Company",
-   "options": "Company",
-   "fetch_from": "employee.company",
-   "reqd": 1
-  },
-  {
-   "fieldname": "tax_year",
-   "fieldtype": "Int",
-   "label": "Tax Year",
-   "reqd": 1,
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "declaration_date",
-   "fieldtype": "Date",
-   "label": "Declaration Date",
-   "default": "Today",
-   "reqd": 1
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "Draft\nSubmitted by Employee\nAccepted by Employer\nSuperseded",
-   "default": "Draft",
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "relief_claims",
-   "fieldtype": "Table",
-   "label": "Relief Claims",
-   "options": "Malaysia Tax Relief Claim"
-  },
-  {
-   "fieldname": "total_reliefs",
-   "fieldtype": "Currency",
-   "label": "Total Reliefs",
-   "read_only": 1
-  },
-  {
-   "fieldname": "employee_declaration",
-   "fieldtype": "Check",
-   "label": "I declare that this information is true and complete",
-   "default": "0"
-  },
-  {
-   "fieldname": "manual_review_notes",
-   "fieldtype": "Small Text",
-   "label": "HR Manager Eligibility / Sub-limit Review Notes"
-  },
-  {
-   "fieldname": "manual_review_approved_by",
-   "fieldtype": "Link",
-   "label": "Manual Review Approved By",
-   "options": "User",
-   "read_only": 1
-  },
-  {
-   "fieldname": "manual_review_approved_on",
-   "fieldtype": "Datetime",
-   "label": "Manual Review Approved On",
-   "read_only": 1
-  }
+ "permissions":[
+  {"role":"System Manager","read":1,"write":1,"create":1,"delete":1,"submit":1,"cancel":1,"amend":1,"print":1,"email":1,"report":1,"export":1,"share":1},
+  {"role":"HR Manager","read":1,"write":1,"create":1,"submit":1,"cancel":1,"amend":1,"print":1,"email":1,"report":1,"export":1},
+  {"role":"Auditor","read":1,"print":1,"report":1,"export":1},
+  {"role":"Employee Self Service","read":1,"write":1,"create":1,"delete":1,"print":1}
  ],
- "links": [],
- "modified": "2026-07-29 00:00:00.000000",
- "modified_by": "Administrator",
- "module": "Malaysia Workforce",
- "name": "Malaysia Tax Declaration TP1",
- "owner": "Administrator",
- "permissions": [
-  {
-   "role": "System Manager",
-   "read": 1,
-   "create": 1,
-   "write": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "report": 1,
-   "share": 1
-  },
-  {
-   "role": "HR Manager",
-   "read": 1,
-   "create": 1,
-   "write": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "report": 1,
-   "share": 1
-  },
-  {
-   "role": "Malaysia HR Manager",
-   "read": 1,
-   "create": 1,
-   "write": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "report": 1,
-   "share": 1
-  },
-  {
-   "role": "Malaysia Payroll User",
-   "read": 1,
-   "create": 1,
-   "write": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "report": 1,
-   "share": 1
-  },
-  {
-   "role": "Employee",
-   "read": 1,
-   "create": 1,
-   "write": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "report": 1,
-   "share": 1
-  },
-  {
-   "role": "Casual Employee",
-   "read": 1,
-   "create": 1,
-   "write": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "report": 1,
-   "share": 1
-  }
- ],
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": [],
- "track_changes": 1,
- "autoname": "naming_series:",
- "title_field": "employee"
+ "sort_field":"modified", "sort_order":"DESC"
 }

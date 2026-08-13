@@ -1,0 +1,24 @@
+{
+ "doctype":"Web Form", "name":"my-tax-reliefs", "module":"Malaysia Workforce", "is_standard":1,
+ "doc_type":"Malaysia Tax Declaration TP1", "title":"My Tax Reliefs (TP1)", "route":"my-tax-reliefs",
+ "published":1, "login_required":1, "anonymous":0, "allow_edit":1, "allow_delete":1,
+ "allow_multiple":1, "show_list":1, "show_sidebar":0, "apply_document_permissions":1,
+ "button_label":"Send for Review", "success_title":"Sent for Review",
+ "introduction_text":"Declare only eligible tax reliefs that you want your employer to consider for monthly tax deductions. Use the relief code from the current TP1 form, enter the claim month (1–12), and attach the receipt. Tick the declaration before saving to send it for review.",
+ "success_message":"Your TP1 declaration was sent to HR for review.", "success_url":"/my-tax-reliefs",
+ "list_columns":[
+  {"fieldname":"tax_year","label":"Tax Year","fieldtype":"Int"},
+  {"fieldname":"declaration_date","label":"Declaration Date","fieldtype":"Date"},
+  {"fieldname":"workflow_state","label":"Status","fieldtype":"Data"}
+ ],
+ "web_form_fields":[
+  {"fieldname":"employee","label":"Employee","fieldtype":"Link","options":"Employee","hidden":1,"read_only":1},
+  {"fieldname":"company","label":"Company","fieldtype":"Link","options":"Company","hidden":1,"read_only":1},
+  {"fieldname":"currency","label":"Currency","fieldtype":"Data","default":"MYR","hidden":1,"read_only":1},
+  {"fieldname":"tax_year","label":"Tax Year","fieldtype":"Int","reqd":1},
+  {"fieldname":"declaration_date","label":"Declaration Date","fieldtype":"Date","reqd":1},
+  {"fieldname":"relief_claims","label":"Relief Claims","fieldtype":"Table","options":"Malaysia Tax Relief Claim","description":"Each row needs a relief code, amount, claim month, and receipt."},
+  {"fieldname":"total_reliefs","label":"Total Reliefs","fieldtype":"Currency","options":"currency","read_only":1},
+  {"fieldname":"employee_declaration","label":"I declare that this information is true and complete","fieldtype":"Check","reqd":1}
+ ]
+}

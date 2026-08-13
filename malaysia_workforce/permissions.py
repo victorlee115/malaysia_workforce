@@ -1,301 +1,148 @@
 from __future__ import annotations
 
 import frappe
+from frappe import _
+from frappe.utils import getdate, nowdate
 
-APP_ACCESS_ROLES = {
-	"System Manager",
-	"HR Manager",
-	"HR User",
-	"Employee",
-	"Casual Employee",
-	"Outlet Manager",
-	"Malaysia HR Manager",
-	"Malaysia Payroll User",
-	"Statutory Administrator",
-	"Malaysia Kiosk",
-	"Malaysia Workforce Auditor",
+TAX_PRIVILEGED = {"System Manager", "HR Manager"}
+FILING_PRIVILEGED = {"System Manager", "HR Manager", "Accounts Manager"}
+READ_ONLY = {"Auditor"}
+EMPLOYEE_TAX_DECLARATIONS = {
+	"Malaysia Tax Declaration TP1",
+	"Malaysia Previous Employment TP3",
 }
-
-STAFFING_MANAGER_ROLES = {"System Manager", "HR Manager", "HR User", "Malaysia HR Manager", "Outlet Manager"}
-AUDITOR_ROLES = {"Malaysia Workforce Auditor"}
-TAX_PRIVILEGED_ROLES = {"System Manager", "HR Manager", "Malaysia HR Manager", "Malaysia Payroll User", "Statutory Administrator", "Malaysia Workforce Auditor"}
-PAYROLL_PRIVILEGED_ROLES = {"System Manager", "HR Manager", "Malaysia HR Manager", "Malaysia Payroll User"}
 
 
 def _roles(user: str | None = None) -> set[str]:
 	return set(frappe.get_roles(user or frappe.session.user))
 
 
-def can_access_app() -> bool:
-	return bool(_roles() & APP_ACCESS_ROLES)
-
-
-def is_tax_privileged(user: str | None = None) -> bool:
-	"""Return whether the current user may review employer-side tax records."""
-	return bool(_roles(user) & TAX_PRIVILEGED_ROLES)
-
-
-def _current_employee_row(user: str | None = None):
+def current_employee(user: str | None = None) -> str | None:
 	user = user or frappe.session.user
 	if user == "Guest":
 		return None
-	return frappe.db.get_value(
-		"Employee", {"user_id": user, "status": "Active"}, ["name", "company"], as_dict=True
-	)
+	return frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
 
 
-def current_employee(user: str | None = None) -> str | None:
-	row = _current_employee_row(user)
-	return row.name if row else None
+def is_tax_privileged(user: str | None = None) -> bool:
+	return bool(_roles(user) & (TAX_PRIVILEGED | READ_ONLY))
 
 
-def _permitted_companies(doctype: str, user: str | None = None) -> set[str] | None:
-	return _permitted_values("Company", doctype, user)
+@frappe.whitelist()
+def employee_tax_defaults() -> dict:
+	"""Return the signed-in employee context for native TP1 and TP3 forms."""
+	employee = current_employee()
+	if not employee:
+		frappe.throw(_("Your User is not linked to an active Employee."), frappe.PermissionError)
+	return {
+		"employee": employee,
+		"company": frappe.db.get_value("Employee", employee, "company"),
+		"tax_year": getdate().year,
+		"declaration_date": nowdate(),
+	}
 
 
-def _permitted_values(allow: str, doctype: str, user: str | None = None) -> set[str] | None:
-	user = user or frappe.session.user
+@frappe.whitelist(methods=["POST"])
+def send_tax_declaration_for_review(doctype: str, name: str) -> dict:
+	"""Apply the native employee workflow after a Web Form has saved its Draft."""
+	if doctype not in EMPLOYEE_TAX_DECLARATIONS:
+		frappe.throw(_("Unsupported tax declaration type."), frappe.PermissionError)
+	employee = current_employee()
+	if not employee:
+		frappe.throw(_("Your User is not linked to an active Employee."), frappe.PermissionError)
+	doc = frappe.get_doc(doctype, name)
+	doc.check_permission("write")
+	if doc.employee != employee:
+		frappe.throw(_("You can only send your own declaration for review."), frappe.PermissionError)
+	if doc.docstatus != 0:
+		frappe.throw(_("Only a Draft declaration can be sent for review."))
+	state = doc.get("workflow_state") or "Draft"
+	if state == "Pending Review":
+		return {"name": doc.name, "workflow_state": state}
+	if state != "Draft":
+		frappe.throw(_("This declaration cannot be sent from workflow state {0}.").format(state))
+
+	from frappe.model.workflow import apply_workflow
+
+	doc = apply_workflow(doc, "Send for Review")
+	return {"name": doc.name, "workflow_state": doc.workflow_state}
+
+
+def _privileged_for(doctype: str) -> set[str]:
+	return FILING_PRIVILEGED if doctype == "Malaysia Statutory Filing" else TAX_PRIVILEGED
+
+
+def _allowed_companies(user: str, doctype: str) -> set[str] | None:
 	rows = frappe.get_all(
 		"User Permission",
-		filters={"user": user, "allow": allow},
+		filters={"user": user, "allow": "Company"},
 		fields=["for_value", "applicable_for"],
-		limit=1000,
 	)
-	values = {
-		row.for_value
-		for row in rows
-		if row.for_value and (not row.applicable_for or row.applicable_for == doctype)
-	}
+	values = {row.for_value for row in rows if not row.applicable_for or row.applicable_for == doctype}
 	return values or None
 
 
-def _escape(value: str) -> str:
-	return frappe.db.escape(value)
+def employee_tax_query(doctype: str, user: str | None = None) -> str:
+	user = user or frappe.session.user
+	if _roles(user) & (TAX_PRIVILEGED | READ_ONLY):
+		return company_query(user, doctype)
+	employee = current_employee(user)
+	return f"`tab{doctype}`.`employee`={frappe.db.escape(employee)}" if employee else "1=0"
 
 
-def _company_condition(doctype: str, user: str | None = None) -> str:
-	companies = _permitted_companies(doctype, user)
-	if _roles(user) & AUDITOR_ROLES and not companies:
+def company_query(user: str | None = None, doctype: str = "Malaysia Statutory Filing") -> str:
+	user = user or frappe.session.user
+	if not _roles(user) & (_privileged_for(doctype) | READ_ONLY):
 		return "1=0"
+	companies = _allowed_companies(user, doctype)
 	if not companies:
-		return ""
-	allowed = ", ".join(_escape(company) for company in sorted(companies))
-	return f"`tab{doctype}`.`company` IN ({allowed})"
+		return "1=0" if _roles(user) & READ_ONLY else ""
+	values = ", ".join(frappe.db.escape(value) for value in sorted(companies))
+	return f"`tab{doctype}`.`company` IN ({values})"
 
 
-def company_scoped_query_condition(doctype: str, user: str | None = None) -> str:
-	user = user or frappe.session.user
-	if not (_roles(user) & TAX_PRIVILEGED_ROLES):
-		return "1=0"
-	return _company_condition(doctype, user)
+def tp1_query(user: str | None = None) -> str:
+	return employee_tax_query("Malaysia Tax Declaration TP1", user)
 
 
-def _staffing_query_condition(doctype: str, user: str | None = None) -> str:
-	user = user or frappe.session.user
-	roles = _roles(user)
-	if not (roles & (STAFFING_MANAGER_ROLES | AUDITOR_ROLES)):
-		return "1=0"
-	conditions = [_company_condition(doctype, user)]
-	branches = _permitted_values("Branch", doctype, user)
-	if branches:
-		allowed = ", ".join(_escape(branch) for branch in sorted(branches))
-		conditions.append(f"COALESCE(`tab{doctype}`.`branch`, '') IN ('', {allowed})")
-	if doctype == "Cafe Staffing Plan" and "Outlet Manager" in roles and not roles & {
-		"System Manager",
-		"HR Manager",
-		"HR User",
-		"Malaysia HR Manager",
-	}:
-		conditions.append(f"`tabCafe Staffing Plan`.`manager`={_escape(user)}")
-	return " AND ".join(condition for condition in conditions if condition)
+def tp3_query(user: str | None = None) -> str:
+	return employee_tax_query("Malaysia Previous Employment TP3", user)
 
 
-def coverage_template_query_condition(user: str | None = None) -> str:
-	return _staffing_query_condition("Cafe Coverage Template", user)
+def cp38_query(user: str | None = None) -> str:
+	return company_query(user, "Malaysia CP38 Directive")
 
 
-def staffing_plan_query_condition(user: str | None = None) -> str:
-	return _staffing_query_condition("Cafe Staffing Plan", user)
+def filing_query(user: str | None = None) -> str:
+	return company_query(user, "Malaysia Statutory Filing")
 
 
-def employee_company_scoped_query_condition(doctype: str, user: str | None = None) -> str:
-	user = user or frappe.session.user
-	if not (_roles(user) & TAX_PRIVILEGED_ROLES):
-		return "1=0"
-	companies = _permitted_companies(doctype, user)
-	if not companies:
-		return "1=0" if _roles(user) & AUDITOR_ROLES else ""
-	allowed = ", ".join(_escape(company) for company in sorted(companies))
-	return (
-		"EXISTS (SELECT 1 FROM `tabEmployee` mw_employee "
-		f"WHERE mw_employee.name=`tab{doctype}`.`employee` AND mw_employee.company IN ({allowed}))"
-	)
-
-
-def company_scoped_has_permission(doc, user=None, permission_type=None, ptype=None):
+def employee_tax_permission(doc, user=None, permission_type=None, ptype=None):
+	if doc is None:
+		return None
 	user = user or frappe.session.user
 	permission_type = ptype or permission_type
-	if not (_roles(user) & TAX_PRIVILEGED_ROLES):
-		return False
-	companies = _permitted_companies(doc.doctype, user)
-	if _roles(user) & AUDITOR_ROLES:
-		return permission_type in {"read", "select", "print", "report", "export"} and bool(
-			companies and getattr(doc, "company", None) in companies
+	roles = _roles(user)
+	if roles & READ_ONLY:
+		return permission_type in {"read", "select", "report", "print", "export"} and company_permission(
+			doc, user, permission_type
 		)
+	if roles & TAX_PRIVILEGED:
+		return company_permission(doc, user, permission_type)
+	return getattr(doc, "employee", None) == current_employee(user)
+
+
+def company_permission(doc, user=None, permission_type=None, ptype=None):
+	if doc is None:
+		return None
+	user = user or frappe.session.user
+	permission_type = ptype or permission_type
+	roles = _roles(user)
+	if not roles & (_privileged_for(doc.doctype) | READ_ONLY):
+		return False
+	if roles & READ_ONLY and permission_type not in {"read", "select", "report", "print", "export"}:
+		return False
+	companies = _allowed_companies(user, doc.doctype)
+	if roles & READ_ONLY and not companies:
+		return False
 	return not companies or getattr(doc, "company", None) in companies
-
-
-def staffing_has_permission(doc, user=None, permission_type=None, ptype=None):
-	user = user or frappe.session.user
-	permission_type = ptype or permission_type
-	roles = _roles(user)
-	if not (roles & (STAFFING_MANAGER_ROLES | AUDITOR_ROLES)):
-		return False
-	companies = _permitted_companies(doc.doctype, user)
-	if roles & AUDITOR_ROLES and (
-		permission_type not in {"read", "select", "print", "report", "export"}
-		or not companies
-	):
-		return False
-	if companies and getattr(doc, "company", None) not in companies:
-		return False
-	branches = _permitted_values("Branch", doc.doctype, user)
-	if branches and getattr(doc, "branch", None) and doc.branch not in branches:
-		return False
-	if doc.doctype == "Cafe Staffing Plan" and "Outlet Manager" in roles and not roles & {
-		"System Manager", "HR Manager", "HR User", "Malaysia HR Manager"
-	}:
-		return doc.manager == user
-	return True
-
-
-def employee_company_scoped_has_permission(doc, user=None, permission_type=None, ptype=None):
-	user = user or frappe.session.user
-	permission_type = ptype or permission_type
-	if not (_roles(user) & TAX_PRIVILEGED_ROLES):
-		return False
-	companies = _permitted_companies(doc.doctype, user)
-	if _roles(user) & AUDITOR_ROLES and (
-		permission_type not in {"read", "select", "print", "report", "export"}
-		or not companies
-	):
-		return False
-	if companies:
-		company = frappe.db.get_value("Employee", getattr(doc, "employee", None), "company")
-		return company in companies
-	return True
-
-
-def casual_availability_query_condition(user: str | None = None) -> str:
-	user = user or frappe.session.user
-	if _roles(user) & (STAFFING_MANAGER_ROLES | AUDITOR_ROLES):
-		conditions = [_company_condition("Casual Availability", user)]
-		branches = _permitted_values("Branch", "Casual Availability", user)
-		if branches:
-			allowed = ", ".join(_escape(branch) for branch in sorted(branches))
-			conditions.append(
-				"EXISTS (SELECT 1 FROM `tabEmployee` mw_employee "
-				f"WHERE mw_employee.name=`tabCasual Availability`.`employee` AND mw_employee.branch IN ({allowed}))"
-			)
-		return " AND ".join(condition for condition in conditions if condition)
-	employee = current_employee(user)
-	return f"`tabCasual Availability`.`employee`={_escape(employee)}" if employee else "1=0"
-
-
-def casual_availability_has_permission(doc, user=None, permission_type=None, ptype=None):
-	user = user or frappe.session.user
-	permission_type = ptype or permission_type
-	roles = _roles(user)
-	if roles & (STAFFING_MANAGER_ROLES | AUDITOR_ROLES):
-		companies = _permitted_companies(doc.doctype, user)
-		if roles & AUDITOR_ROLES and (
-			permission_type not in {"read", "select", "print", "report", "export"}
-			or not companies
-		):
-			return False
-		if companies and getattr(doc, "company", None) not in companies:
-			return False
-		branches = _permitted_values("Branch", doc.doctype, user)
-		if branches:
-			branch = frappe.db.get_value("Employee", doc.employee, "branch")
-			return branch in branches
-		return True
-	return bool(current_employee(user) and doc.employee == current_employee(user))
-
-
-def shift_work_record_query_condition(user: str | None = None) -> str:
-	user = user or frappe.session.user
-	if _roles(user) & (PAYROLL_PRIVILEGED_ROLES | STAFFING_MANAGER_ROLES | AUDITOR_ROLES):
-		return _company_condition("Shift Work Record", user)
-	employee = current_employee(user)
-	return f"`tabShift Work Record`.`employee`={_escape(employee)}" if employee else "1=0"
-
-
-def shift_work_record_has_permission(doc, user=None, permission_type=None, ptype=None):
-	user = user or frappe.session.user
-	permission_type = ptype or permission_type
-	roles = _roles(user)
-	if roles & (PAYROLL_PRIVILEGED_ROLES | STAFFING_MANAGER_ROLES | AUDITOR_ROLES):
-		companies = _permitted_companies(doc.doctype, user)
-		if roles & AUDITOR_ROLES:
-			return permission_type in {"read", "select", "print", "report", "export"} and bool(
-				companies and getattr(doc, "company", None) in companies
-			)
-		return not companies or getattr(doc, "company", None) in companies
-	return permission_type in {"read", "select", "print"} and doc.employee == current_employee(user)
-
-
-def employee_tax_query_condition(doctype: str, user: str | None = None) -> str:
-	user = user or frappe.session.user
-	if _roles(user) & TAX_PRIVILEGED_ROLES:
-		return company_scoped_query_condition(doctype, user)
-	employee = current_employee(user)
-	return f"`tab{doctype}`.`employee`={_escape(employee)}" if employee else "1=0"
-
-
-def tp1_query_condition(user: str | None = None) -> str:
-	return employee_tax_query_condition("Malaysia Tax Declaration TP1", user)
-
-
-def tp3_query_condition(user: str | None = None) -> str:
-	return employee_tax_query_condition("Malaysia Previous Employment TP3", user)
-
-
-def annual_statement_query_condition(user: str | None = None) -> str:
-	return employee_tax_query_condition("Malaysia Annual Remuneration Statement", user)
-
-
-def employee_profile_query_condition(user: str | None = None) -> str:
-	return company_scoped_query_condition("Malaysia Employee Profile", user)
-
-
-def work_agreement_query_condition(user: str | None = None) -> str:
-	return company_scoped_query_condition("Employee Work Agreement", user)
-
-
-def coverage_profile_query_condition(user: str | None = None) -> str:
-	return company_scoped_query_condition("Statutory Coverage Profile", user)
-
-
-def accumulator_query_condition(user: str | None = None) -> str:
-	return company_scoped_query_condition("Monthly Statutory Accumulator", user)
-
-
-def submission_query_condition(user: str | None = None) -> str:
-	return company_scoped_query_condition("Statutory Submission", user)
-
-
-def employee_notification_query_condition(user: str | None = None) -> str:
-	return company_scoped_query_condition("Malaysia Employee Notification", user)
-
-
-def treatment_history_query_condition(user: str | None = None) -> str:
-	return employee_company_scoped_query_condition("Statutory Treatment History", user)
-
-
-def employee_owned_tax_has_permission(doc, user=None, permission_type=None, ptype=None):
-	user = user or frappe.session.user
-	permission_type = ptype or permission_type
-	if _roles(user) & TAX_PRIVILEGED_ROLES:
-		return company_scoped_has_permission(doc, user, permission_type)
-	return doc.employee == current_employee(user)

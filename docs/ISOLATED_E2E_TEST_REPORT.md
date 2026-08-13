@@ -1,59 +1,104 @@
 # Isolated ERPNext/Frappe end-to-end test report
 
-Test date: 2026-08-12  
-Verdict: MariaDB and Chrome staging acceptance passed; external production gates remain
+**Test date:** 2026-08-13
 
-## Tested stack
+**Verdict:** Existing-site MariaDB integration and the exercised Chrome role screens pass, including employee TP1/TP3 submission. Production release remains blocked by the external and clean-stack gates below.
 
-- Frappe 16.19.0 (`ba18090b141740e75d52aa97bfc525ff2f831f6c`)
-- ERPNext 16.20.0 (`ff46d20b259a2d65a7ded959df9f9a42991a3562`)
-- HRMS 16.7.1 (`fe9ad9d362406a1ec3f394e14f6b3d5684c79b83`)
-- Malaysia Workforce 1.0.0rc7 from the working tree
-- Python 3.14.7, Node 24.14.0 and Yarn 1.22.22
-- MariaDB 11.4.12, `REPEATABLE-READ`, `utf8mb4` / `utf8mb4_unicode_ci`
-- Clean disposable MariaDB site: `mw-mariadb.localhost`
+## Environment
 
-MariaDB ran in an isolated Alpine Lima VM with only the scoped site database/user exposed to the disposable bench. No Frappe, ERPNext or HRMS source was changed; all three dependency repositories remained clean after testing.
+- Frappe 16.31.0 (`6a329d068416768ec47ccd3326b9cc95a8d7bf99`)
+- ERPNext 16.31.1 (`22247ab7c57ab51b5e05c274e85321402d133a64`)
+- HRMS 16.16.0 (`f281e8b172ac8836ad89c59df65a922101103097`)
+- Malaysia Workforce 1.0.0rc10 from the working tree
+- Python 3.14.7, Node 24 and MariaDB 11.4.12
+- Isolated site: `mw-mariadb.localhost`
 
-## Automated and live results
+MariaDB ran in a disposable Lima environment. The app was tested as an extension of the standard Frappe, ERPNext and HRMS records; no dependency source was patched or monkey-patched.
 
-| Check | Result |
-| --- | --- |
-| Clean Frappe, ERPNext, HRMS and app installation | Passed |
-| Consecutive MariaDB migrations / idempotency | Passed |
-| Malaysia Workforce asset build | Passed |
-| Pure statutory, staffing and control tests | 62 passed |
-| Complete live app suite on MariaDB | 8 passed |
-| Pinned-stack diagnostic | Passed |
-| Statutory source-file hashes | Passed |
-| Production release without activation evidence | Correctly blocked |
+## MariaDB workflow evidence
 
-The live operational suite exercised a standard approved Staffing Plan, managed Shift Type reuse, submitted Shift Assignments, signed and duplicate kiosk events, standard Employee Checkins and Attendance, an immutable Shift Work Record and standard Payroll Entry/Salary Slip processing. The payroll run produced Malaysian EPF, SOCSO, EIS and PCB deductions plus an idempotent generic UAT bank CSV for one employee with a RM52.05 control total.
+The existing test site migrated twice consecutively without error. The live scenarios exercised:
 
-It also exercised invalid kiosk signatures, unsupported Sabah scope, expired statutory-review rejection, company activation gating, PERKESO/DOSH tasks, retry-safe exceptions, company/employee permissions and self-approval prevention.
+- standard Company, Employee, Contract, Salary Component, Salary Structure Assignment, Additional Salary, Overtime Slip, Payroll Entry and Salary Slip records;
+- gross pay of RM6,000 and net pay of RM5,053.70 with deterministic EPF, SOCSO, LINDUNG 24 Jam, EIS, PCB, CP38, zakat and HRD calculations;
+- two-hour full-time overtime producing RM72.12 and six hours of part-time additional work producing RM70.00;
+- TP1, TP3 and CP38 payroll inputs;
+- standard Payroll Entry submit-time readiness validation without a parallel release lifecycle;
+- retry-safe EPF, PERKESO, LHDN and HRD Corp preparation files, employee/control totals, human evidence and reconciliation state;
+- source-change protection on filing: an unchanged retry returned the same artifact, while changed statutory results and serialized employee identities were detected;
+- employee/company permission isolation, read-only Auditor access and server-side rejection of cross-company payroll report filters;
+- calendar-month aggregation of non-overlapping Overtime Slips against the 104-hour limit;
+- fail-closed earning classification, LINDUNG release windows/multiple-employer scope, HRD headcount, signed TP3 evidence and CP38 remaining-balance checks;
+- employee TP1/TP3 save → Pending Review, retry safety, native HR approval and two distinct prior-employer TP3 records;
+- removal of the former roster, availability, employee-profile, work-agreement, shift-work-record and parallel payroll-run DocTypes.
 
-## Chrome acceptance
+The synthetic authority receipt and activation attachment prove application state transitions only. They are not evidence of acceptance by an authority or bank.
 
-Chrome was connected and used directly; Browser and Computer fallbacks were not needed.
+## Chrome acceptance by role
 
-- Employee, mobile 390 × 844: opened the native Casual Availability Web Form, copied a previous cycle, confirmed, reviewed the shifted windows, entered a note, submitted and returned to a list that did not disclose the Employee link.
-- Outlet manager, desktop: opened the native Workspace and Staffing Plan, moved through `Collecting Availability → Proposed → Approved`, generated two assignments at 100% coverage and opened the standard HRMS `/hr/roster` view.
-- Payroll processor: opened the standard Payroll workspace, Payroll Entry list and native new-entry form using the separated custom role.
-- HR Manager releaser: opened the submitted Payroll Entry read-only, saw only the relevant `Release Payroll` action, confirmed it and received the intentional company-activation block.
-- Auditor: opened the submitted Payroll Entry without a permission dialog, Save control, bank preparation action or release action.
+Chrome was used directly; Browser and Computer Use fallbacks were not needed.
 
-The run found and fixed native UX defects in availability Web Form initialization/table copying, Employee identity exposure in the Web Form list, standard Payroll Entry role access and the HRMS read-only bank-entry probe.
+### Employee
+
+- Signed in as the native `Employee Self Service` user and opened the actual Frappe HR PWA at `/hrms` at 390 × 844. A narrow Desk page was not treated as mobile acceptance.
+- Clicked Home, Attendance, Leaves, Expenses, Salary and Profile, plus new Attendance Request, Shift Request, Leave Application, Expense Claim and Employee Advance forms. Every screen rendered without a fresh browser error.
+- Opened the Shift Type, Leave Type, Expense Approver and Currency selectors without permission failures.
+- Viewed the standard 2026 Payroll Period, year-to-date amount and three own submitted Salary Slips through the unmodified HRMS PWA.
+- Opened TP1 and TP3 through direct standard Web Form links; the employee has no custom portal or Desk Workspace.
+- Created TP1 and TP3 with Employee and Company derived from the signed-in active Employee on the server, and tax year/currency defaulted without exposing those identities for editing.
+- Verified that a new TP1 begins with no misleading relief row and shows relief code, amount, claim month and receipt in the native child table.
+- Selected **Send for Review** on TP1 and TP3 and received the native **Sent for Review** success page; both records reached Pending Review.
+- Verified both tax forms at 390 × 844 with no page-level horizontal overflow and verified labelled native response lists.
+- Opened a standard submitted Salary Slip, including its ordinary deductions and Malaysia calculation audit.
+- Confirmed the mobile page width remained 390 px with no page-level horizontal overflow.
+
+### HR Manager
+
+- Used `Statutory Details` on the standard Employee form.
+- Used `Statutory Working Terms` on the standard Contract form; no parallel employee profile or work agreement exists.
+- Reviewed TP1 evidence and maintained a CP38 directive.
+- Opened the employee-created Pending Review TP1, saw only the native **Approve** and **Return** actions, and received Frappe's standard confirmation dialog. A duplicate annual TP1 approval was correctly blocked; the live MariaDB scenario proved the valid TP3 approval path.
+- Used the native Workspace and standard record navigation.
+
+### Payroll processor
+
+- Opened a standard Payroll Entry and selected the direct, read-only `Check Statutory Setup` action.
+- Saw only standard Payroll Entry fields; the app adds no status, release or visible hash fields.
+
+### Statutory operator
+
+- Prepared an EPF filing from a standard Frappe form as Accounts Manager.
+- Verified employee rows, wage/contribution totals and the private standard File attachment. Internal hashes were hidden from the form.
+- Did not claim an external submission; the UI requires human evidence before submission/reconciliation states.
+
+### Auditor
+
+- Opened Payroll Entries, Salary Slips, TP1/TP3/CP38 records, filings and reports read-only.
+- Saw no Save, Prepare, Submit or Reconcile action.
+
+### System Manager
+
+- Configured `Statutory Payroll` on the standard Company form without losing native sections.
+- Verified employer identifiers, jurisdiction and HRD status are grouped in the standard form.
+
+The complete employee PWA retest produced no fresh browser-console errors. Earlier Desk tabs retained Socket.IO polling noise because the disposable test web process did not run the realtime service; those entries predated the PWA retest and are not application exceptions. The optional notification-relay endpoint was also absent from this minimal process. A full production Bench must run its normal web, realtime, worker and scheduler services.
+
+## Clean-site blocker
+
+A brand-new site could not reach Malaysia Workforce installation. Pinned Frappe 16.31.0 failed during its own bootstrap with:
+
+```text
+MySQLdb.OperationalError: (1054, "Unknown column 'protect_attached_files' in 'INSERT INTO'")
+```
+
+The pinned framework's DocType model includes `protect_attached_files`, but its bootstrap SQL does not create that column before the insert. The current official version-16 revision tested was the same commit. The app deliberately does not patch Frappe core to conceal this issue.
 
 ## Remaining production gates
 
-The code is a staging/UAT candidate, not an activated production payroll system. These external gates remain mandatory:
+- Retest a completely clean official stack after Frappe publishes a compatible build.
+- Validate every EPF, PERKESO, LHDN and HRD file against the current official portal or validator.
+- Run two consecutive parallel payroll months and an off-cycle or year-boundary payroll with zero unexplained differences.
+- Complete multi-worker concurrency, scheduler, backup restore, security and private-file drills.
+- Obtain Malaysian payroll specialist and accountable employer sign-off.
 
-- Configure and validate the actual bank-specific adapter; the generated generic CSV is explicitly UAT-only.
-- Validate LHDN, EPF i-Akaun, PERKESO/ASSIST and HRD Corp handoffs and retain authority acknowledgements.
-- Run two consecutive parallel payroll periods plus an off-cycle or year-boundary case with zero unexplained differences.
-- Complete multi-worker concurrency, scheduler/queue retry, physical-kiosk offline/revocation and reverse-proxy monitoring drills.
-- Complete backup encryption, restoration evidence, security review and incident/exception exercises.
-- Exercise standard HRMS recruitment, onboarding, leave, claims, performance, training and separation for the deployment configuration.
-- Obtain Malaysian payroll/employment specialist and accountable employer sign-off.
-
-The company activation checklist intentionally keeps bank payment, authority submission and automatic production processing disabled until this evidence exists.
+Until these gates pass, this is an evidence-backed staging/UAT candidate, not production-ready payroll.

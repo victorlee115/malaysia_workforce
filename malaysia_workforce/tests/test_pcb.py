@@ -84,6 +84,23 @@ def test_lhdn_worked_example_april_bonus():
 	assert result.chargeable_income_with_additional == d("54650.00")
 
 
+def test_zakat_reduces_pcb_in_additional_remuneration_month():
+	base = dict(
+		month=4, resident=True, category=3, current_normal_gross=d(5500),
+		current_additional_gross=d(8250), current_normal_epf=d(605), current_additional_epf=d(908),
+		prior_gross=d(16500), prior_epf_relief=d(1815), prior_mtd=d("328.20"),
+		prior_optional_reliefs=d(300), current_optional_reliefs=d(300), child_units=d(3),
+	)
+	without_zakat = calculate_pcb(PCBInput(**base))
+	with_current_zakat = calculate_pcb(PCBInput(**base, current_zakat=d(100)))
+	with_prior_and_current = calculate_pcb(PCBInput(**base, prior_zakat=d(300), current_zakat=d(100)))
+	assert without_zakat.payable == d("833.70")
+	assert with_current_zakat.payable == d("733.70")
+	assert with_prior_and_current.payable == d("727.20")
+	assert with_current_zakat.payable < without_zakat.payable
+	assert with_prior_and_current.payable <= with_current_zakat.payable
+
+
 def test_nonresident_rate_and_minimum():
 	result = calculate_pcb(
 		PCBInput(

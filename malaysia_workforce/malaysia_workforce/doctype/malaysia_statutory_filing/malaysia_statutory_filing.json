@@ -1,0 +1,39 @@
+{
+ "doctype":"DocType", "name":"Malaysia Statutory Filing", "module":"Malaysia Workforce", "engine":"InnoDB",
+ "autoname":"naming_series:", "track_changes":1, "allow_import":0, "is_submittable":1,
+ "field_order":["naming_series","company","authority","period_start","period_end","authority_status","employee_section","employee_lines","total_wages","total_employee","total_employer","total_additional","file_section","generated_file","submission_evidence","acknowledgement","reconciliation_status","reconciliation_difference","audit_section","source_hash","rule_pack","file_hash","submitted_by","submitted_at","amended_from"],
+ "fields":[
+  {"fieldname":"naming_series","label":"Series","fieldtype":"Select","options":"MY-FILING-.YYYY.-.#####","default":"MY-FILING-.YYYY.-.#####","reqd":1},
+  {"fieldname":"company","label":"Company","fieldtype":"Link","options":"Company","reqd":1,"in_list_view":1},
+  {"fieldname":"authority","label":"Authority","fieldtype":"Select","options":"EPF\nPERKESO\nLHDN\nHRD Corp","reqd":1,"in_list_view":1},
+  {"fieldname":"period_start","label":"Period Start","fieldtype":"Date","reqd":1},
+  {"fieldname":"period_end","label":"Period End","fieldtype":"Date","reqd":1,"in_list_view":1},
+  {"fieldname":"authority_status","label":"Authority Status","fieldtype":"Select","options":"Pending\nAccepted\nRejected","default":"Pending","read_only_depends_on":"eval:doc.docstatus==0","allow_on_submit":1,"in_list_view":1},
+  {"fieldname":"employee_section","label":"Employee and Control Totals","fieldtype":"Section Break"},
+  {"fieldname":"employee_lines","label":"Employee Totals","fieldtype":"Table","options":"Malaysia Filing Employee","read_only":1},
+  {"fieldname":"total_wages","label":"Total Wages","fieldtype":"Currency","options":"MYR","read_only":1},
+  {"fieldname":"total_employee","label":"Total Employee","fieldtype":"Currency","options":"MYR","read_only":1},
+  {"fieldname":"total_employer","label":"Total Employer","fieldtype":"Currency","options":"MYR","read_only":1},
+  {"fieldname":"total_additional","label":"LINDUNG 24 Jam","fieldtype":"Currency","options":"MYR","read_only":1},
+  {"fieldname":"file_section","label":"File and Submission Evidence","fieldtype":"Section Break"},
+  {"fieldname":"generated_file","label":"Prepared Output","fieldtype":"Attach","read_only":1,"hidden":1,"no_copy":1},
+  {"fieldname":"submission_evidence","label":"Portal Submission Evidence","fieldtype":"Attach","allow_on_submit":1},
+  {"fieldname":"acknowledgement","label":"Authority Acknowledgement","fieldtype":"Attach","allow_on_submit":1},
+  {"fieldname":"reconciliation_status","label":"Reconciliation Status","fieldtype":"Select","options":"Not Reconciled\nReconciled","default":"Not Reconciled","read_only":1,"allow_on_submit":1},
+  {"fieldname":"reconciliation_difference","label":"Reconciliation Difference","fieldtype":"Currency","options":"MYR","read_only":1,"allow_on_submit":1},
+  {"fieldname":"audit_section","label":"Technical Details","fieldtype":"Section Break","collapsible":1,"collapsed":1,"hidden":1},
+  {"fieldname":"source_hash","label":"Source SHA-256","fieldtype":"Data","read_only":1,"no_copy":1,"hidden":1},
+  {"fieldname":"rule_pack","label":"Rule Pack","fieldtype":"Data","read_only":1,"hidden":1},
+  {"fieldname":"file_hash","label":"File SHA-256","fieldtype":"Data","read_only":1,"no_copy":1,"hidden":1},
+  {"fieldname":"submitted_by","label":"Submitted By","fieldtype":"Link","options":"User","read_only":1,"no_copy":1},
+  {"fieldname":"submitted_at","label":"Submitted At","fieldtype":"Datetime","read_only":1,"no_copy":1},
+  {"fieldname":"amended_from","label":"Amended From","fieldtype":"Link","options":"Malaysia Statutory Filing","read_only":1,"no_copy":1}
+ ],
+ "permissions":[
+  {"role":"System Manager","read":1,"write":1,"create":1,"delete":1,"submit":1,"cancel":1,"amend":1,"print":1,"report":1,"export":1},
+  {"role":"Accounts Manager","read":1,"write":1,"create":1,"submit":1,"cancel":1,"amend":1,"print":1,"report":1,"export":1},
+  {"role":"HR Manager","read":1,"print":1,"report":1,"export":1},
+  {"role":"Auditor","read":1,"print":1,"report":1,"export":1}
+ ],
+ "sort_field":"modified", "sort_order":"DESC"
+}

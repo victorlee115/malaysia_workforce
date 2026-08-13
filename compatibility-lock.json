@@ -7,22 +7,22 @@
   },
   "apps": {
     "frappe": {
-      "version": "16.19.0",
-      "git_tag": "v16.19.0",
-      "commit": "ba18090"
+      "version": "16.31.0",
+      "git_tag": "v16.31.0",
+      "commit": "6a329d068416768ec47ccd3326b9cc95a8d7bf99"
     },
     "erpnext": {
-      "version": "16.20.0",
-      "git_tag": "v16.20.0",
-      "commit": "ff46d20"
+      "version": "16.31.1",
+      "git_tag": "v16.31.1",
+      "commit": "22247ab7c57ab51b5e05c274e85321402d133a64"
     },
     "hrms": {
-      "version": "16.7.1",
-      "git_tag": "v16.7.1",
-      "commit": "fe9ad9d"
+      "version": "16.16.0",
+      "git_tag": "v16.16.0",
+      "commit": "f281e8b172ac8836ad89c59df65a922101103097"
     }
   },
   "reviewed_on": "2026-08-12",
-  "certification_status": "isolated-mariadb-pass-external-uat-required",
-  "notes": "The exact app stack passed clean install, repeated migration, live workflows and Chrome role acceptance on MariaDB 11.4.12. Production activation remains blocked until parallel payroll, bank/authority UAT, recovery drills and specialist sign-off pass."
+  "certification_status": "upgrade-site-pass-clean-bootstrap-blocked-upstream",
+  "notes": "Migration and live Malaysia payroll workflows pass on MariaDB 11.4.12. A brand-new Frappe v16.31.0 site currently fails before app installation because the upstream framework bootstrap schema omits tabDocType.protect_attached_files. Production release remains blocked until an official Frappe build fixes that clean-site defect and all external UAT gates pass."
 }

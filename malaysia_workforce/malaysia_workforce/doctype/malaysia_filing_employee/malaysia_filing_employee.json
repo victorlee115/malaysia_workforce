@@ -1,0 +1,13 @@
+{
+ "doctype":"DocType", "name":"Malaysia Filing Employee", "module":"Malaysia Workforce", "engine":"InnoDB", "istable":1, "editable_grid":1,
+ "field_order":["employee","employee_name","wages","employee_amount","employer_amount","additional_amount","rule_version"],
+ "fields":[
+  {"fieldname":"employee","label":"Employee","fieldtype":"Link","options":"Employee","reqd":1,"in_list_view":1},
+  {"fieldname":"employee_name","label":"Employee Name","fieldtype":"Data","read_only":1,"in_list_view":1},
+  {"fieldname":"wages","label":"Assessable Wages","fieldtype":"Currency","options":"MYR","read_only":1,"in_list_view":1},
+  {"fieldname":"employee_amount","label":"Employee Amount","fieldtype":"Currency","options":"MYR","read_only":1,"in_list_view":1},
+  {"fieldname":"employer_amount","label":"Employer Amount","fieldtype":"Currency","options":"MYR","read_only":1,"in_list_view":1},
+  {"fieldname":"additional_amount","label":"LINDUNG 24 Jam","fieldtype":"Currency","options":"MYR","read_only":1},
+  {"fieldname":"rule_version","label":"Rule Version","fieldtype":"Data","read_only":1}
+ ], "permissions":[]
+}

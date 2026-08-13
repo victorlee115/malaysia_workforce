@@ -60,13 +60,13 @@ jobs:
           npm install --global yarn
       - name: Build the pinned Frappe v16 site
         run: |
-          bench init --no-backups --skip-redis-config-generation --frappe-branch v16.19.0 frappe-bench
+          bench init --no-backups --skip-redis-config-generation --frappe-branch v16.31.0 frappe-bench
           cd frappe-bench
           bench set-config -g db_host 127.0.0.1
           bench set-config -g redis_cache redis://127.0.0.1:6379
           bench set-config -g redis_queue redis://127.0.0.1:6379
-          bench get-app --branch v16.20.0 erpnext https://github.com/frappe/erpnext
-          bench get-app --branch v16.7.1 hrms https://github.com/frappe/hrms
+          bench get-app --branch v16.31.1 erpnext https://github.com/frappe/erpnext
+          bench get-app --branch v16.16.0 hrms https://github.com/frappe/hrms
           bench get-app "$GITHUB_WORKSPACE"
           bench new-site test.localhost --db-root-password frappe --admin-password admin --no-mariadb-socket
           bench --site test.localhost install-app erpnext
@@ -79,8 +79,13 @@ jobs:
           bench --site test.localhost migrate
           bench --site test.localhost migrate
           bench build --app malaysia_workforce
-          bench --site test.localhost run-tests --app malaysia_workforce
-          bench --site test.localhost execute malaysia_workforce.diagnostics.assert_compatible_stack
-          test "$(git -C apps/frappe rev-parse --short=7 HEAD)" = "ba18090"
-          test "$(git -C apps/erpnext rev-parse --short=7 HEAD)" = "ff46d20"
-          test "$(git -C apps/hrms rev-parse --short=7 HEAD)" = "fe9ad9d"
+          bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_all
+          bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_source_tamper
+          bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_lindung_release
+          bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_report_permission_isolation
+          bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_overtime_monthly_limit
+          bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_review_guardrails
+          bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_tax_self_service
+          test "$(git -C apps/frappe rev-parse --short=7 HEAD)" = "6a329d0"
+          test "$(git -C apps/erpnext rev-parse --short=7 HEAD)" = "22247ab"
+          test "$(git -C apps/hrms rev-parse --short=7 HEAD)" = "f281e8b"

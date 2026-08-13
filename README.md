@@ -1,93 +1,76 @@
-# Malaysia Workforce for ERPNext/Frappe HR
+# Malaysia Payroll for Frappe HR
 
-**Version:** 1.0.0-rc.7
+**Version:** 1.0.0-rc.10
 
-**Pinned candidate stack:** Frappe 16.19.0, ERPNext 16.20.0, Frappe HR 16.7.1, Python 3.14, Node 24
-
+**Tested stack:** Frappe 16.31.0, ERPNext 16.31.1, HRMS 16.16.0, Python 3.14, Node 24, MariaDB 11.4
 **Licence:** GPL-3.0-or-later
 
-Malaysia Workforce is a focused Malaysian localization and cafe-staffing layer for Frappe HR. It does not replace Frappe HR.
+Malaysia Workforce is a lean Malaysian payroll localisation for Frappe HR. It keeps standard Frappe HR records and screens authoritative and adds the statutory behaviour that the Malaysia country context needs.
 
-Standard `Employee`, recruitment, onboarding, `Shift Assignment`, `Employee Checkin`, `Attendance`, leave, claims, training, performance, `Payroll Entry`, `Salary Slip`, accounting and separation records remain authoritative. This app adds only:
+It adds:
 
-- a native Web Form for casual/part-time availability;
-- coverage templates and assisted two-week staffing plans that publish ordinary Shift Assignments;
-- immutable derived work/pay breakdowns;
-- Malaysian payroll/statutory calculations and preparation files;
-- human payroll release, bank reconciliation and compliance evidence controls;
-- a signed, replay-safe fixed-kiosk check-in endpoint.
+- effective-dated EPF, SOCSO, LINDUNG 24 Jam, EIS, PCB, HRD Corp and minimum-wage rules;
+- statutory fields on standard `Company`, `Employee`, `Contract`, `Salary Component`, `Salary Slip` and `Overtime Type`;
+- TP1 relief declarations, TP3 previous-employment amounts and CP38 directives;
+- native overtime, rest-day and public-holiday calculations through HRMS `Overtime Slip`;
+- deterministic statutory results on `Salary Slip`;
+- a read-only readiness check on the standard `Payroll Entry` form;
+- EPF, PERKESO, LHDN and HRD Corp preparation records with control totals and submission evidence;
+- payroll-readiness and annual-remuneration reports.
 
-There is no separate workforce portal, custom roster, parallel payroll run, design system, core fork or monkey patch.
+It does **not** add employee profiles, employment agreements, recruitment, leave, attendance, rosters, bank payments, a custom employee portal, or a parallel payroll run. Use standard Frappe HR for those.
 
-## Native staffing flow
+## Authoritative flow
 
 ```text
-Casual Availability (Web Form)
-  → Cafe Coverage Template
-  → Cafe Staffing Plan (Frappe Workflow)
-  → standard Shift Type + Shift Assignment
-  → signed kiosk Employee Checkin
-  → standard Attendance
-  → derived Shift Work Record
-  → standard Payroll Entry + Salary Slip
-  → bank/statutory preparation and human release
+Company + Employee + Contract + Salary Components
+    → Salary Structure Assignment / Additional Salary / Overtime Slip
+    → standard Payroll Entry
+    → standard Salary Slip with statutory deductions and calculation details
+    → normal Frappe HR payroll submission and accounting
+    → authority preparation records with human submission evidence
 ```
 
-Employees continue to use Frappe HR self-service for published shifts, shift requests, attendance history, leave, claims and payslips. Managers return to the standard HRMS roster after approving a staffing plan.
+## Phase 1 scope
 
-## Staffing defaults
+Phase 1 deliberately supports Peninsular Malaysia and Malaysian citizens or permanent residents under ordinary resident PCB treatment. Unsupported jurisdictions, foreign workers, incomplete statutory identities, missing contracts and dates beyond the reviewed rule pack fail closed.
 
-- 14-day cycles; availability opens 21 days before and closes seven days before.
-- Availability uses 30-minute boundaries and may contain multiple windows per day.
-- No submitted availability means unavailable.
-- Automatic recommendations prefer continuous 4–8 hour assignments, then 2–4 hours.
-- One-hour shifts are never generated automatically. A sub-two-hour manual assignment needs a reason, private employee confirmation, and an effective agreement that permits that duration; anything below one hour is rejected.
-- Critical coverage and longer useful availability rank before staffing priority and fairness.
-- Priority never bypasses availability, designation/skill, location, leave, conflicts or agreement hour limits.
+The generated authority files are preparation artifacts. They never claim an authority accepted a submission unless a user records the evidence.
 
-## Malaysian scope
+## Install and validate
 
-The candidate supports reviewed Peninsular Malaysia cases for supported Malaysian citizens/permanent residents and standard PCB treatment. Unsupported jurisdictions, worker classes, tax regimes, missing profiles and expired rule reviews fail closed.
-
-Included controls cover EPF, SOCSO, EIS, PCB, HRD Corp levy, minimum wage, flexible-worker pay bands, deductions/final pay, employee notifications, incident escalation and current human authority handoffs. Generated worksheets are preparation records; they do not claim official submission without recorded human evidence.
-
-## Installation
-
-Install on an isolated staging site using the exact versions in [`compatibility-lock.json`](compatibility-lock.json):
+Use the exact versions in [`compatibility-lock.json`](compatibility-lock.json). Install ERPNext and HRMS first, then this app:
 
 ```bash
-cd /path/to/frappe-bench
 bench get-app /path/to/malaysia_workforce
 bench --site staging.example.com install-app malaysia_workforce
 bench --site staging.example.com migrate
 bench --site staging.example.com migrate
 bench build --app malaysia_workforce
-bench --site staging.example.com execute malaysia_workforce.diagnostics.run
 ```
 
-Before payroll, configure the Company, employee work agreements/profiles, standard HRMS leave and holiday policies, an auto-attendance base casual Shift Type, Salary Structures/Assignments, accounts, kiosk and bank/authority UAT evidence. See [Configuration](docs/CONFIGURATION.md).
-
-## Verification
+Run the local checks:
 
 ```bash
 pytest -q
-python -m compileall -q malaysia_workforce
 npm run check:js
 python scripts/verify_release.py
 ```
 
-Production activation remains blocked until the exact-stack clean install/upgrade suite, two parallel payrolls, an off-cycle or year-boundary simulation, bank/authority UAT, role/security review and backup restoration drill all pass with zero unexplained differences.
+The currently pinned upstream Frappe 16.31.0 release has a clean-site bootstrap defect described in [Release validation](docs/RELEASE_VALIDATION.md). Existing-site migration and the live Malaysia payroll scenario pass, but this release must not be promoted until a clean official stack installation, external authority acceptance, parallel payroll, recovery testing, and specialist review all pass.
 
 ## Documentation
 
 - [Installation](docs/INSTALLATION.md)
 - [Configuration](docs/CONFIGURATION.md)
+- [Complete beginner's user guide](docs/USER_GUIDE.md)
 - [Frappe HR ownership](docs/FRAPPE_HR_CONFIGURATION.md)
-- [Operations](docs/OPERATIONS.md)
-- [Security](docs/SECURITY.md)
+- [Payroll operations](docs/OPERATIONS.md)
 - [Statutory scope](docs/LEGAL_AND_STATUTORY.md)
+- [Security](docs/SECURITY.md)
 - [Validation and go-live](docs/VALIDATION.md)
-- [API](docs/API.md)
+- [Release evidence](docs/RELEASE_VALIDATION.md)
 - [Upgrade](docs/UPGRADE.md)
+- [Public methods](docs/API.md)
 
-This app can reduce routine HR administration; it cannot remove the employer's legal accountability or the need for periodic Malaysian payroll/employment specialist review.
+The app can remove repetitive payroll administration. The employer still retains legal accountability and should obtain periodic Malaysian payroll and employment-law review.

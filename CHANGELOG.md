@@ -1,78 +1,45 @@
 # Changelog
 
-## 1.0.0-rc.7 — 2026-08-12
+## 1.0.0-rc.10 — 2026-08-13
 
-- Passed clean installation, consecutive migration, asset build and the complete live app suite on MariaDB 11.4.12 with the exact pinned Frappe/ERPNext/HRMS v16 stack.
-- Completed Chrome acceptance for mobile employee availability, manager proposal/publication, native HRMS roster, payroll processing, independent release and read-only audit personas.
-- Fixed Web Form lifecycle/table-copy behavior, hidden employee identity in availability lists and made live scenarios retry-safe across date changes and prior payroll generation.
-- Added standard Frappe permissions for separated payroll roles without granting submit rights to releasers or auditors; suppressed HRMS's mutating bank-entry probe for genuine read-only viewers.
-- Completed a standard Payroll Entry and Salary Slip flow with Malaysian deductions and an idempotent generic UAT bank file, while retaining the production activation block.
-- Fixed statutory Salary Slip deduction insertion and made pure tests importable by Frappe's native test discovery without a bench-only pytest dependency.
+- Completed the native employee TP1/TP3 handoff: the standard Web Form now saves the declaration and immediately applies Frappe's `Send for Review` Workflow action, with retry-safe server authorization and a clear success page.
+- Derived hidden Employee and Company values from the signed-in active Employee on the server, removing browser-only mandatory-field failures without trusting client input.
+- Added a narrow upgrade patch for missing TP1/TP3 Workflow submit rights while preserving unrelated administrator permission customizations.
+- Supported one signed TP3 per distinct previous employer and employment period, with duplicate prevention and combined annual relief caps across every approved TP3 and the current-employer TP1.
+- Added labels and field types to native Web Form lists, removing `undefined` headings.
+- Added MariaDB coverage for employee submission, retry safety, HR approval and multiple previous employers, plus Chrome mobile acceptance for both tax Web Forms.
 
-## 1.0.0-rc.6 — 2026-08-11
+This remains a release candidate. Clean official-stack bootstrap, external authority UAT, parallel payroll, recovery/security drills and Malaysian payroll-specialist sign-off are still required before live payroll.
 
-- Removed the custom roster portal, roster DocTypes, planner page and parallel Malaysia Payroll Run.
-- Added native availability Web Form, effective coverage templates and Workflow-driven two-week Staffing Plans.
-- Added deterministic long-shift-first allocation, coverage gaps, managed Shift Type reuse and standard Shift Assignment publishing.
-- Enforced agreement minimums, split-shift policy and complete hard eligibility on both generated and manager-adjusted recommendations; protected adjustments with chained audit evidence and standard ToDos.
-- Moved reservation, validation, human release, bank and statutory preparation controls to standard Payroll Entry.
-- Added a standard read-only, explicitly Company-scoped Malaysia Workforce Auditor role and disabled self-approval for Staffing Plan publication.
-- Added fail-closed legacy-schema preflight, native Workspace/report UX and updated exact-stack live scenarios.
+## 1.0.0-rc.9 — 2026-08-13
 
-## 1.0.0-rc.5 — 2026-08-11
+- Corrected LINDUNG 24 Jam from an opt-in election to the opt-out scheme PERKESO confirmed on 10 July 2026. Participation is now the default: an employee who has recorded nothing contributes, and the deduction stops only from the effective date of their own Liability Release Notice. The previous model blocked payroll for every employee whose participation was unrecorded, which after the rc.8 migration was all of them.
+- A release cannot take effect before 8 July 2026, so already-deducted June 2026 contributions are never reversed.
+- Evidence and an effective date are now required only for a recorded release, not for the default.
+- Fixed a mid-month over-deduction: SKBBK was folded into the SOCSO scheme total instead of being tracked separately, so a second Salary Slip in the same month re-charged SKBBK that the first had already taken while over-reducing SOCSO. On an even RM3,000/RM3,000 September split this charged RM22.15 too much SKBBK and RM15.00 too little SOCSO, and left the PERKESO filing totals disagreeing with the payslips; the amount varies with how the month is split, up to a full band.
+- Fixed the payroll-readiness live scenario, which passed its filter as `on_date` and so evaluated readiness against the current date instead of the period end.
+- Enforced Company/User Permissions in payroll reports and rejected unclassified earning components before statutory calculation.
+- Enforced the official existing/new-employee LINDUNG release windows and failed closed for unsupported multiple-employer selection.
+- Reconciled HRD Corp registration against the Malaysian-employee threshold and excluded permanent residents from leviable employees.
+- Aggregated Overtime Slip detail hours by calendar month for the 104-hour limit.
+- Included employee and employer identifiers in statutory-filing fingerprints so identity changes invalidate prepared files.
+- Replaced the arbitrary TP3 relief total with controlled, evidenced relief rows sharing annual limits with TP1.
+- Stopped automatic legacy-role mapping from granting broader HR/accounting permissions.
+- Corrected CP38 remaining-balance handling across multiple Salary Slips in one month.
 
-- Made standard Frappe HR `Payroll Entry`, `Salary Slip`, `Shift Assignment`, `Employee Checkin`, attendance, leave, claims, training and lifecycle records authoritative; retained the old payroll run only as a read-only internal compatibility snapshot.
-- Added Peninsular Malaysia and supported-citizenship fail-closed gates, effective-dated minimum wage and flexible-worker classifications, deduction/final-pay controls and reviewed part-time/rest-day/public-holiday rules.
-- Added HRD Corp levy calculation, accounting, portal preparation, payment tasks, training evidence and headcount threshold alerts.
-- Rebuilt TP1 validation around controlled relief codes and evidence; rejected unimplemented special PCB regimes and corrected CP21/CP22/CP22A notification handling.
-- Added current EPF i-Akaun preparation while keeping retired e-Caruman output explicitly UAT-only and non-submittable.
-- Added signed, idempotent kiosk events on standard Employee Checkin, replay protection, offline/drift controls and trusted-device credential rotation.
-- Added production activation, source hashes, one-final-period uniqueness, human release, bank-adapter/UAT gates, reconciliation, immutable exception resolution and processor/releaser separation.
-- Added company-scoped permissions, self-approval prevention, workplace-incident escalation, scheduler failure isolation and expanded readiness diagnostics.
-- Pinned the certification candidate to Frappe 16.19.0, ERPNext 16.20.0, Frappe HR 16.7.1, Python 3.14 and Node 24; clean release verification now operates on Git-tracked archive inputs.
+**Action required on upgrade.** A migration sets every `Not Set` employee to `Participating` and clears election paperwork left on participating employees; the underlying File records are preserved on the Employee. Employees already recorded as `Not Participating` are left untouched and written to the error log, because this app cannot tell a genuine portal Liability Release Notice from an election captured under the old model — **re-verify each one before the next payroll**. Submitted Salary Slips are not recalculated: review every slip since 1 June 2026 that recorded zero LINDUNG, and any employee with two slips in one month, and correct them through the documented amendment process.
 
-## 1.0.0-rc.4 — 2026-07-29
+## 1.0.0-rc.8 — 2026-08-12
 
-- Corrected the Frappe app distribution name from `malaysia-workforce` to `malaysia_workforce`.
-- Ensured Bench clones the app to `apps/malaysia_workforce`.
-- Fixed installation failure when Bench reads the application version.
+- Rebuilt the app as a lean Malaysian payroll localisation around standard Frappe HR records.
+- Removed the custom staffing, availability, roster, kiosk, employee-profile, work-agreement, bank, incident, privacy, accumulator and parallel-payroll subsystems.
+- Added a guarded migration that stops when real legacy operational records need an explicit archive or migration decision.
+- Added Malaysia fields to standard Company, Employee, Contract, Salary Component, Salary Slip, Payroll Entry and Overtime Type records.
+- Added effective-dated EPF, SOCSO/SKBBK, EIS, PCB, HRD Corp, minimum-wage and wage-rule calculations.
+- Added TP1, TP3, CP38, statutory filing, payroll-readiness and annual-remuneration features using native Frappe forms and reports.
+- Added source-hash protection, two-person payroll release and read-only auditor access.
+- Added deterministic live MariaDB scenarios, including post-validation source-tamper rejection.
+- Pinned the tested Frappe 16.31.0, ERPNext 16.31.1 and HRMS 16.16.0 stack.
+- Recorded the upstream Frappe clean-site bootstrap defect honestly as a production release blocker.
 
-## 1.0.0-rc.3 — 2026-07-29
-
-- Corrected the legacy EPF CSV header to `Salary`.
-- Reclassified the bundled EPF serializer as retired e-Caruman UAT-only, disabled it by default and blocked official-submission status.
-- Preserved administrator-reviewed Salary Component formulas, accounts and statutory classifications during migration.
-- Failed installation on unmanaged reserved Salary Component names instead of silently adopting them.
-- Enforced roster skill requirements through Frappe HR's standard Employee Skill Map.
-- Escaped portal error messages and added Jinja and duplicate-JSON-key tests.
-- Added a deterministic live Bench installation, migration, test and HTTP-smoke harness.
-- Replaced Bootstrap 5-only portal modal calls with a Frappe v16 Bootstrap 4-compatible adapter.
-- Integrated split-shift availability with Frappe HR's standard multiple same-date Shift Assignment setting.
-- Expanded the pure/static suite to 56 tests.
-
-## 1.0.0-rc.2 — 2026-07-29
-
-- Corrected the supported runtime to Frappe v16's Python 3.14 and Node 24 baseline.
-- Added company and assigned-manager permission isolation for rosters and linked records.
-- Added database locking, work-record reservation and idempotent payroll finalisation.
-- Delayed statutory submission generation until every linked Salary Slip is submitted.
-- Prevented automatic pay from including unapproved early-arrival or late-departure time.
-- Added standard Shift Assignment conflict checks, overnight handling and availability limits.
-- Made submitted statutory snapshot parsing fail closed and hardened authority exporters.
-- Hardened TP1/TP3 validation, immutability and evidence references.
-- Added finite-number, row-count, company-account and reserved-master-data validation.
-- Added safe casual Salary Structure validation and mid-period joiner assignment dates.
-- Expanded the pure/static suite to 46 tests and added release-integrity checks.
-
-## 1.0.0-rc.1 — 2026-07-29
-
-- Initial production-oriented release candidate for Frappe/ERPNext/Frappe HR v16.
-- Added exact-hour casual roster applications and manager-controlled selection.
-- Added employee confirmation offers, attendance, corrections and payable work records.
-- Added hourly pay bands and idempotent Additional Salary/Payroll Entry integration.
-- Added effective employee work agreements, Malaysian profiles and direct statutory overrides without approval.
-- Added month-to-date EPF, SOCSO/LINDUNG, EIS and PCB calculations.
-- Added LHDN, EPF and PERKESO monthly files with source snapshots and checksums.
-- Added preparation records for TP1, TP3, employee notifications, EA/EC, CP8D and Form E.
-- Added employer contribution Journal Entry, submission revisions, payment and reconciliation.
-- Added 25 pure automated tests and release verification tooling.
+The prior implementation remains preserved on branch `codex/archive-pre-lean-20260812` at commit `5fce234`.

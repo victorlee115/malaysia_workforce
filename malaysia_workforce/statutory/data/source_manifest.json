@@ -29,8 +29,13 @@
       "sha256": "6fe2880e3c7034819e0d473dcc9e84e8b486fb2d5e0b392a43d885342fccd803"
     }
   },
+  "rule_files": {
+    "minimum_wage_2025.json": {"sha256": "2cbd6dbcaeba7d2eb80aa240f3f63110e9daf104ce72ec6847452b5691b1b396"},
+    "pay_rules_2026.json": {"sha256": "3f0a762a4793916f58c4cf22a344d49a3d1e1cad951a87bff1da36221516547d"},
+    "tp1_reliefs_2026.json": {"sha256": "fc4308722c31704e97dfe840fe4b7afe2a32630e76f6b2e749b557d72b5d7d1b"}
+  },
   "official_reference_pages": {
-	"employment_act_1955": "https://jtksm.mohr.gov.my/sites/default/files/2022-11/akta_kerja1955_bi.pdf",
+	"employment_act_1955": "https://jtksm.mohr.gov.my/sites/default/files/2023-11/Akta%20Kerja%201955%20%28Akta%20265%29.pdf",
 	"part_time_employees_regulations_2010": "https://jtksm.mohr.gov.my/sites/default/files/2023-03/10.%20Employment%20-%20Part-time%20Employees%20-%20Regulations%202010%20%20%281%29.pdf",
 	"epf_mandatory_contribution": "https://www.kwsp.gov.my/en/employer/responsibilities/mandatory-contribution",
     "epf_third_schedule": "https://www.kwsp.gov.my/en/epf-act-1991-third-schedule",
@@ -39,7 +44,9 @@
     "perkeso_combined_format_faq": "https://www.perkeso.gov.my/images/lindung/lindung-24-jam/FAQ_TextFileFormat_EN.pdf",
     "perkeso_combined_format_specification": "https://www.perkeso.gov.my/images/borang/lindung24jam/formatteksfail.pdf",
     "perkeso_contribution_rates": "https://www.perkeso.gov.my/en/rate-of-contribution.html",
-	"perkeso_lindung_24_jam": "https://www.perkeso.gov.my/skim-kemalangan-bukan-bencana-kerja-lindung-24-jam.html",
+	"perkeso_lindung_24_jam": "https://www.perkeso.gov.my/en/skim-kemalangan-bukan-bencana-kerja-lindung-24-jam.html",
+	"perkeso_lindung_24_jam_faq_13072026": "https://www.perkeso.gov.my/images/lindung/lindung-24-jam/130726-FAQ_LINDUNG_24_JAM.pdf",
+	"perkeso_lindung_faedah_portal": "https://lindungfaedah.perkeso.gov.my/",
 	"tp1_2026": "https://www.hasil.gov.my/media/gjuhcbc2/bi-tp1-form-2026.pdf",
 	"hrd_corp_registered_employers": "https://hrdcorp.gov.my/registered-employers",
 	"hrd_corp_levy_deadline": "https://hrdcorp.gov.my/circulars",
@@ -55,7 +62,7 @@
     "sha256": "7412bc8d5a975e01c41440c98b5cc1d51651b437a29a96ea0c201c9e3af84a03",
     "size": 191770
   },
-  "reviewed_on": "2026-08-11",
+  "reviewed_on": "2026-08-12",
   "reviewed_through": "2026-12-31",
   "socso_skbbk_2026.pdf": {
     "sha256": "e76b2a03740f6da4a305919c677d4935a05e9166502e5f06afe1030b7407caa1",

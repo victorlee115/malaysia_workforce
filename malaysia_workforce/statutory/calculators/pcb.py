@@ -140,8 +140,7 @@ def calculate_pcb(args: PCBInput) -> PCBResult:
 		raw_additional = truncate(
 			annual_tax_with_additional
 			- projected_normal_mtd_year
-			+ decimal(args.prior_zakat)
-			+ decimal(args.current_zakat)
+			- decimal(args.prior_zakat)
 		)
 		additional_mtd = ZERO if raw_additional < Decimal("10") else round_up_5_sen(raw_additional)
 

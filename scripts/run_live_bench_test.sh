@@ -11,6 +11,11 @@ LOG_DIR="${LOG_DIR:-$BENCH_DIR/logs/malaysia-workforce-live-test}"
 DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
 COMPANY="${COMPANY:-}"
+MARIADB_CLIENT_LIB="${MARIADB_CLIENT_LIB:-}"
+
+if [ -n "$MARIADB_CLIENT_LIB" ]; then
+    export DYLD_LIBRARY_PATH="$MARIADB_CLIENT_LIB${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+fi
 
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/${SITE//\//_}-$(date +%Y%m%d-%H%M%S).log"
@@ -43,9 +48,9 @@ assert_app_commit() {
     actual="$(git -C "$BENCH_DIR/apps/$app" rev-parse --short=7 HEAD)"
     [ "$actual" = "$expected" ] || fail "$app is at $actual; compatibility-lock.json requires $expected"
 }
-assert_app_commit frappe ba18090
-assert_app_commit erpnext ff46d20
-assert_app_commit hrms fe9ad9d
+assert_app_commit frappe 6a329d0
+assert_app_commit erpnext 22247ab
+assert_app_commit hrms f281e8b
 
 step "Install/update Malaysia Workforce app source"
 if [ ! -d apps/malaysia_workforce ]; then
@@ -56,7 +61,7 @@ else
     [ -n "$expected_version" ] || fail "Cannot determine Malaysia Workforce version from APP_SOURCE"
     [ "$installed_version" = "$expected_version" ] || fail \
         "apps/malaysia_workforce is version ${installed_version:-unknown}; expected $expected_version. Replace it with APP_SOURCE before testing."
-    ./env/bin/pip install -e apps/malaysia_workforce
+    ./env/bin/python -m pip install -e apps/malaysia_workforce
 fi
 
 if [ ! -f "sites/$SITE/site_config.json" ]; then
@@ -97,9 +102,14 @@ bench build --app malaysia_workforce
 step "Run pure/static app test suite using the Bench virtual environment"
 ./env/bin/python -m pytest -q apps/malaysia_workforce/malaysia_workforce/tests
 
-step "Run live Frappe database/schema integration tests"
-bench --site "$SITE" run-tests --module malaysia_workforce.live_tests.test_installation
-bench --site "$SITE" run-tests --module malaysia_workforce.live_tests.test_operational_scenarios
+step "Run live Frappe payroll and permission scenarios"
+bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_all
+bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_source_tamper
+bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_lindung_release
+bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_report_permission_isolation
+bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_overtime_monthly_limit
+bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_review_guardrails
+bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_tax_self_service
 
 if [ -n "$COMPANY" ]; then
 	step "Assert configured Malaysia company readiness"
@@ -108,7 +118,7 @@ if [ -n "$COMPANY" ]; then
 fi
 
 step "Bench health"
-bench doctor
+bench --site "$SITE" doctor
 
 SERVER_PID=""
 cleanup_server() {

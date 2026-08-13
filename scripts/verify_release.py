@@ -54,16 +54,16 @@ def check_versions_and_runtime() -> None:
 	package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
 	for expected in (
 		'requires-python = ">=3.14,<3.15"',
-		'frappe = "==16.19.0"',
-		'erpnext = "==16.20.0"',
-		'hrms = "==16.7.1"',
+		'frappe = "==16.31.0"',
+		'erpnext = "==16.31.1"',
+		'hrms = "==16.16.0"',
 	):
 		if expected not in pyproject:
 			fail(f"Missing runtime/dependency pin: {expected}")
 	if package.get("engines", {}).get("node") != ">=24":
 		fail("package.json must require Node >=24 for Frappe v16")
 	lock = json.loads((ROOT / "compatibility-lock.json").read_text(encoding="utf-8"))
-	for app, expected in (("frappe", "16.19.0"), ("erpnext", "16.20.0"), ("hrms", "16.7.1")):
+	for app, expected in (("frappe", "16.31.0"), ("erpnext", "16.31.1"), ("hrms", "16.16.0")):
 		if lock.get("apps", {}).get(app, {}).get("version") != expected:
 			fail(f"compatibility-lock.json does not pin {app} {expected}")
 	if lock.get("runtime", {}).get("database") != "MariaDB 11.4":
@@ -81,15 +81,13 @@ def check_required_files() -> None:
 		"docs/INSTALLATION.md",
 		"docs/CONFIGURATION.md",
 		"docs/OPERATIONS.md",
+		"docs/USER_GUIDE.md",
 		"docs/VALIDATION.md",
 		"docs/RELEASE_VALIDATION.md",
-		"docs/CODE_AUDIT_AND_TEST_REPORT.md",
-		"docs/LIVE_ERPNext_TEST.md",
-		"docs/BUILD_ENVIRONMENT_LIMITATION.md",
 		"scripts/run_live_bench_test.sh",
 		"scripts/generate_release_manifest.py",
 		"compatibility-lock.json",
-		"malaysia_workforce/live_tests/test_installation.py",
+		"malaysia_workforce/live_tests/scenarios.py",
 	):
 		path = ROOT / relative
 		if not path.exists() or path.stat().st_size == 0:
@@ -105,7 +103,7 @@ def check_no_stale_release_markers() -> None:
 		"malaysia_workforce/install.py",
 	):
 		text = (ROOT / relative).read_text(encoding="utf-8")
-		for marker in ("1.0.0-rc.1", "1.0.0rc1", "1.0.0-rc.2", "1.0.0rc2"):
+		for marker in ("1.0.0-rc.9", "1.0.0rc9"):
 			if marker in text:
 				fail(f"Stale release marker {marker} in {relative}")
 

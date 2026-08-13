@@ -1,80 +1,68 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
-from datetime import datetime, time, timedelta
+import platform
+from datetime import date, timedelta
+from decimal import Decimal
 
 import frappe
 from frappe.model.workflow import apply_workflow
-from frappe.utils import add_days, getdate
 from frappe.utils.password import update_password
 
-from malaysia_workforce.api.attendance import kiosk_clock, set_kiosk_credential
+from malaysia_workforce.payroll.events import check_readiness
+
+COMPANY = "MW Lean Cafe Sdn Bhd"
+EMPLOYEE_USER = "aina.lean@example.com"
+PAYROLL_OWNER = "payroll.owner@example.com"
+PAYROLL_RELEASER = "payroll.releaser@example.com"
+HR_MANAGER = "hr.manager@example.com"
+AUDITOR = "payroll.auditor@example.com"
+SYSTEM_MANAGER = "system.manager@example.com"
+PASSWORD = "Malaysia-Payroll-E2E-2026"
+PERIOD_START = date(2026, 7, 1)
+PERIOD_END = date(2026, 7, 31)
 
 
-COMPANY = "MW E2E Cafe Sdn Bhd"
-EMPLOYEE_EMAIL = "mw.employee@example.com"
-HR_MANAGER_EMAIL = "mw.manager@example.com"
-PAYROLL_EMAIL = "mw.payroll@example.com"
-RELEASER_EMAIL = "mw.releaser@example.com"
-AUDITOR_EMAIL = "mw.auditor@example.com"
-KIOSK_ID = "MW-CAFE-KIOSK-01"
-KIOSK_SECRET = "mw-e2e-kiosk-signing-secret"
-KIOSK_CREDENTIAL = "2468"
+def runtime_info() -> dict:
+	from frappe.model.base_document import get_controller
+	from malaysia_workforce.payroll.overtime import MalaysiaOvertimeMixin
+
+	obsolete = (
+		"Casual Availability", "Cafe Staffing Plan", "Malaysia Payroll Run",
+		"Malaysia Employee Profile", "Employee Work Agreement", "Shift Work Record",
+	)
+	return {
+		"database": frappe.db.sql("select version()", pluck=True)[0],
+		"python": platform.python_version(),
+		"apps": {row.app_name: row.app_version for row in frappe.get_all(
+			"Installed Application", fields=["app_name", "app_version"]
+		)},
+		"obsolete_doctypes_present": [name for name in obsolete if frappe.db.exists("DocType", name)],
+		"overtime_extension_loaded": MalaysiaOvertimeMixin in get_controller("Overtime Slip").__mro__,
+	}
 
 
-def permission_probe(user: str, doctype: str, name: str) -> dict:
-	"""Return live permission evidence without changing the target document."""
-	frappe.set_user(user)
-	doc = frappe.get_doc(doctype, name)
+def database_grants() -> list[str]:
+	return [row[0] for row in frappe.db.sql("show grants")]
+
+
+def auditor_permission_debug() -> dict:
+	from frappe.permissions import get_doc_permissions
+	from malaysia_workforce.permissions import employee_tax_permission, tp1_query
+
+	name = frappe.db.get_value("Malaysia Tax Declaration TP1", {"company": COMPANY}, "name")
+	doc = frappe.get_doc("Malaysia Tax Declaration TP1", name)
+	frappe.set_user(AUDITOR)
 	result = {
-		"roles": frappe.get_roles(user),
-		"doctype_read": bool(frappe.has_permission(doctype, "read", user=user)),
-		"document_read": bool(frappe.has_permission(doctype, "read", doc=doc, user=user)),
+		"roles": frappe.get_roles(AUDITOR),
+		"user_permissions": frappe.get_all("User Permission", filters={"user": AUDITOR},
+			fields=["allow", "for_value", "applicable_for"]),
+		"doctype_read": frappe.has_permission(doc.doctype, "read", user=AUDITOR),
+		"hook_read": employee_tax_permission(doc, user=AUDITOR, permission_type="read"),
+		"query": tp1_query(AUDITOR),
+		"document_permissions": get_doc_permissions(doc, user=AUDITOR),
 	}
 	frappe.set_user("Administrator")
 	return result
-
-
-def _ensure_user(email: str, first_name: str, roles: tuple[str, ...], password: str) -> str:
-	for role in roles:
-		if not frappe.db.exists("Role", role):
-			frappe.get_doc({"doctype": "Role", "role_name": role, "desk_access": 1}).insert(ignore_permissions=True)
-	if not frappe.db.exists("User", email):
-		frappe.get_doc(
-			{
-				"doctype": "User",
-				"email": email,
-				"first_name": first_name,
-				"enabled": 1,
-				"send_welcome_email": 0,
-				"roles": [{"role": role} for role in roles],
-			}
-		).insert(ignore_permissions=True)
-		update_password(email, password)
-	else:
-		doc = frappe.get_doc("User", email)
-		existing = {row.role for row in doc.roles}
-		for role in roles:
-			if role not in existing:
-				doc.append("roles", {"role": role})
-		if {row.role for row in doc.roles} != existing:
-			doc.save(ignore_permissions=True)
-	return email
-
-
-def _ensure_company_permission(user: str, company: str) -> None:
-	if frappe.db.exists("User Permission", {"user": user, "allow": "Company", "for_value": company}):
-		return
-	frappe.get_doc(
-		{
-			"doctype": "User Permission",
-			"user": user,
-			"allow": "Company",
-			"for_value": company,
-			"apply_to_all_doctypes": 1,
-		}
-	).insert(ignore_permissions=True)
 
 
 def _mark_setup_complete() -> None:
@@ -85,632 +73,1009 @@ def _mark_setup_complete() -> None:
 	frappe.db.set_single_value("System Settings", "time_zone", "Asia/Kuala_Lumpur")
 	frappe.db.set_single_value("Global Defaults", "country", "Malaysia")
 	frappe.db.set_single_value("Global Defaults", "default_currency", "MYR")
+	frappe.db.set_single_value("Payroll Settings", "include_holidays_in_total_working_days", 1)
 	frappe.defaults.set_global_default("country", "Malaysia")
 	frappe.defaults.set_global_default("currency", "MYR")
 	frappe.defaults.set_global_default("time_zone", "Asia/Kuala_Lumpur")
-	frappe.db.set_single_value("Malaysia Workforce Settings", "enabled", 1)
-	frappe.clear_cache()
 
 
-def prepare_browser_site() -> None:
-	_mark_setup_complete()
-	if frappe.db.exists("Company", COMPANY):
-		company = COMPANY
+def _user(email: str, first_name: str, roles: tuple[str, ...]) -> str:
+	if not frappe.db.exists("User", email):
+		frappe.get_doc({
+			"doctype": "User", "email": email, "first_name": first_name,
+			"enabled": 1, "send_welcome_email": 0,
+			"roles": [{"role": role} for role in roles],
+		}).insert(ignore_permissions=True)
 	else:
-		company = seed_demo()["company"]
-	_ensure_browser_availability_collection(company)
-	frappe.db.commit()
+		doc = frappe.get_doc("User", email)
+		existing = {row.role for row in doc.roles}
+		for role in roles:
+			if role not in existing:
+				doc.append("roles", {"role": role})
+		doc.save(ignore_permissions=True)
+	update_password(email, PASSWORD)
+	return email
 
 
-def _ensure_browser_availability_collection(company: str) -> str:
-	"""Keep the next cycle open so the browser can exercise copy-and-submit UX."""
-	previous_cycle = frappe.db.get_value(
-		"Casual Availability",
-		{"company": company, "status": "Submitted"},
-		"cycle_start",
-		order_by="cycle_start desc",
-	)
-	cycle_start = add_days(previous_cycle or getdate(), 14)
-	plan_name = frappe.db.get_value(
-		"Cafe Staffing Plan",
-		{
-			"company": company,
-			"cycle_start": cycle_start,
-			"workflow_state": "Collecting Availability",
-		},
-		"name",
-	)
-	if plan_name:
-		return plan_name
-	if frappe.db.exists(
-		"Cafe Staffing Plan",
-		{"company": company, "cycle_start": cycle_start, "workflow_state": ["!=", "Superseded"]},
-	):
-		return frappe.db.get_value(
-			"Cafe Staffing Plan",
-			{"company": company, "cycle_start": cycle_start, "workflow_state": ["!=", "Superseded"]},
-			"name",
-		)
-
-	template_name = "MW E2E Future Availability Coverage"
-	if not frappe.db.exists("Cafe Coverage Template", template_name):
-		template_name = frappe.get_doc(
-			{
-				"doctype": "Cafe Coverage Template",
-				"template_name": template_name,
-				"company": company,
-				"effective_from": cycle_start,
-				"effective_until": add_days(cycle_start, 13),
-				"coverage_rows": [
-					{
-						"weekday": cycle_start.strftime("%A"),
-						"start_time": time(8),
-						"end_time": time(12),
-						"required_headcount": 1,
-						"designation": "Barista",
-						"criticality": "Critical",
-					}
-				],
-			}
-		).insert(ignore_permissions=True).name
-
-	plan = frappe.get_doc(
-		{
-			"doctype": "Cafe Staffing Plan",
-			"plan_title": "MW E2E Next-cycle Availability Collection",
-			"company": company,
-			"manager": HR_MANAGER_EMAIL,
-			"cycle_start": cycle_start,
-			"coverage_template": template_name,
-		}
-	).insert(ignore_permissions=True)
-	return apply_workflow(plan.as_dict(), "Open Availability").name
+def _make_employee_self_service_user(email: str) -> None:
+	"""Use the native HRMS mobile/PWA user type after Employee is linked."""
+	user = frappe.get_doc("User", email)
+	if user.user_type != "Employee Self Service":
+		user.user_type = "Employee Self Service"
+		user.save(ignore_permissions=True)
 
 
-def _ensure_company() -> str:
-	_mark_setup_complete()
-	# ERPNext's Company hook creates a Goods in Transit warehouse and expects the
-	# standard Warehouse Type master to exist even on a minimal test site.
+def _company_permission(user: str) -> None:
+	if not frappe.db.exists("User Permission", {"user": user, "allow": "Company", "for_value": COMPANY}):
+		frappe.get_doc({
+			"doctype": "User Permission", "user": user, "allow": "Company",
+			"for_value": COMPANY, "apply_to_all_doctypes": 1,
+		}).insert(ignore_permissions=True)
+
+
+def _private_file(file_name: str, content: str) -> str:
+	url = frappe.db.get_value("File", {"file_name": file_name, "is_private": 1}, "file_url")
+	if url:
+		return url
+	return frappe.get_doc({
+		"doctype": "File", "file_name": file_name, "content": content, "is_private": 1,
+	}).save(ignore_permissions=True).file_url
+
+
+def _company() -> str:
 	if not frappe.db.exists("Warehouse Type", "Transit"):
 		frappe.get_doc({"doctype": "Warehouse Type", "name": "Transit"}).insert(ignore_permissions=True)
-	if not frappe.db.exists("Issue Priority", "High"):
-		frappe.get_doc({"doctype": "Issue Priority", "name": "High"}).insert(ignore_permissions=True)
 	if not frappe.db.exists("Company", COMPANY):
-		frappe.get_doc(
-			{
-				"doctype": "Company",
-				"company_name": COMPANY,
-				"abbr": "MWC",
-				"country": "Malaysia",
-				"default_currency": "MYR",
-				"chart_of_accounts": "Standard",
-			}
-		).insert(ignore_permissions=True)
-	frappe.db.set_value(
-		"Company",
-		COMPANY,
-		{
-			"custom_enable_malaysia_payroll": 1,
-			"custom_malaysia_jurisdiction": "Peninsular Malaysia",
-			"custom_malaysia_citizenship_policy": "Malaysian Citizens Only",
-			"custom_malaysia_rule_review_deadline": "2026-12-31",
-			"custom_hrd_corp_registered": 1,
-			"custom_hrd_corp_registration_number": "HRD-MW-E2E",
-			"custom_hrd_levy_rate": 1,
-			"custom_malaysia_bank_file_format": "Generic CSV (UAT Only)",
-		},
-		update_modified=False,
-	)
+		frappe.get_doc({
+			"doctype": "Company", "company_name": COMPANY, "abbr": "MWL",
+			"country": "Malaysia", "default_currency": "MYR", "chart_of_accounts": "Standard",
+		}).insert(ignore_permissions=True)
+	frappe.db.set_value("Company", COMPANY, {
+		"custom_enable_malaysia_payroll": 1,
+		"custom_malaysia_jurisdiction": "Peninsular Malaysia",
+		"tax_id": "C25845632020",
+		"custom_company_registration_number": "202601012345",
+		"custom_lhdn_hq_number": "01",
+		"custom_lhdn_employer_number": "E1234567800",
+		"custom_epf_employer_number": "12345678",
+		"custom_socso_employer_code": "A1234567890",
+		"custom_hrd_registration_class": "Compulsory (1%)",
+		"custom_hrd_registration_number": "HRD-MWL-2026",
+		"custom_hrd_effective_from": "2026-01-01",
+	}, update_modified=False)
+	frappe.clear_cache(doctype="Company")
 	return COMPANY
 
 
-def _ensure_designation_and_shift() -> tuple[str, str]:
-	designation = "Barista"
-	if not frappe.db.exists("Designation", designation):
-		frappe.get_doc({"doctype": "Designation", "designation_name": designation}).insert(ignore_permissions=True)
-	shift = "MW E2E Casual Base"
-	if not frappe.db.exists("Shift Type", shift):
-		doc = frappe.new_doc("Shift Type")
-		doc.name = shift
-		doc.shift_type = shift
-		doc.start_time = time(8)
-		doc.end_time = time(16)
-		doc.enable_auto_attendance = 1
-		doc.insert(ignore_permissions=True)
-	settings = frappe.get_doc("Malaysia Workforce Settings")
-	settings.flexible_shift_template = shift
-	settings.staffing_slot_minutes = 30
-	settings.preferred_minimum_shift_hours = 4
-	settings.normal_minimum_shift_hours = 2
-	settings.maximum_recommended_shift_hours = 8
-	settings.save(ignore_permissions=True)
-	return designation, shift
+def _holiday_setup() -> str:
+	name = "MW Lean Malaysia 2026"
+	if not frappe.db.exists("Holiday List", name):
+		frappe.get_doc({
+			"doctype": "Holiday List", "holiday_list_name": name,
+			"from_date": "2026-01-01", "to_date": "2026-12-31", "country": "Malaysia",
+		}).insert(ignore_permissions=True)
+	frappe.db.set_value("Company", COMPANY, "default_holiday_list", name, update_modified=False)
+	if not frappe.db.exists("Holiday List Assignment", {
+		"holiday_list": name, "applicable_for": "Company", "assigned_to": COMPANY, "docstatus": 1,
+	}):
+		assignment = frappe.get_doc({
+			"doctype": "Holiday List Assignment", "naming_series": "HR-HLA-.YYYY.-",
+			"holiday_list": name, "applicable_for": "Company", "assigned_to": COMPANY,
+			"from_date": "2026-01-01",
+		}).insert(ignore_permissions=True)
+		assignment.submit()
+	frappe.clear_cache(doctype="Company")
+	return name
 
 
-def _ensure_employee(company: str, designation: str) -> str:
-	employee = frappe.db.get_value("Employee", {"employee_number": "MW-E2E-001"}, "name")
-	if not employee:
-		if not frappe.db.exists("Gender", "Female"):
-			frappe.get_doc({"doctype": "Gender", "gender": "Female"}).insert(ignore_permissions=True)
-		employee = frappe.get_doc(
-			{
-				"doctype": "Employee",
-				"first_name": "Aina",
-				"last_name": "Rahman",
-				"employee_number": "MW-E2E-001",
-				"company": company,
-				"designation": designation,
-				"gender": "Female",
-				"date_of_birth": "1998-04-15",
-				"date_of_joining": "2026-01-01",
-				"status": "Inactive",
-				"user_id": EMPLOYEE_EMAIL,
-				"bank_ac_no": "123456789012",
-			}
-		).insert(ignore_permissions=True).name
-	if not frappe.db.exists("Malaysia Employee Profile", {"employee": employee}):
-		frappe.get_doc(
-			{
-				"doctype": "Malaysia Employee Profile",
-				"employee": employee,
-				"company": company,
-				"effective_from": "2026-01-01",
-				"nationality_status": "Malaysian",
-				"nric_number": "980415140001",
-				"tax_regime": "STANDARD",
-				"tax_category": "1",
-				"child_units": 0,
-				"epf_number": "10000001",
-				"socso_number": "980415140001",
-				"eis_number": "980415140001",
-				"income_tax_number": "IG123456780",
-			}
-		).insert(ignore_permissions=True)
+def _fiscal_year_setup() -> str:
+	name = "2026"
+	if frappe.db.exists("Fiscal Year", name):
+		doc = frappe.get_doc("Fiscal Year", name)
+		if COMPANY not in {row.company for row in doc.companies}:
+			doc.append("companies", {"company": COMPANY})
+			doc.save(ignore_permissions=True)
 	else:
-		frappe.db.set_value(
-			"Malaysia Employee Profile",
-			frappe.db.get_value("Malaysia Employee Profile", {"employee": employee}, "name"),
-			{"eis_number": "980415140001"},
-			update_modified=False,
-		)
-	if not frappe.db.exists("Employee Work Agreement", {"employee": employee}):
-		frappe.get_doc(
-			{
-				"doctype": "Employee Work Agreement",
-				"employee": employee,
-				"company": company,
-				"effective_from": "2026-01-01",
-				"work_arrangement": "Casual",
-				"contract_relationship": "Contract of Service",
-				"regularity": "Occasional or Irregular",
-				"jurisdiction": "Peninsular Malaysia",
-				"pay_basis": "Hourly",
-				"base_hourly_rate": 15,
-				"comparable_full_time_daily_hours": 8,
-				"comparable_full_time_weekly_hours": 45,
-				"maximum_daily_hours": 12,
-				"maximum_weekly_hours": 45,
-				"minimum_shift_hours": 2,
-				"weekly_rest_day": "Sunday",
-			}
-		).insert(ignore_permissions=True)
-	if not frappe.db.exists("Statutory Coverage Profile", {"employee": employee}):
-		frappe.get_doc(
-			{
-				"doctype": "Statutory Coverage Profile",
-				"employee": employee,
-				"company": company,
-				"effective_from": "2026-01-01",
-			}
-		).insert(ignore_permissions=True)
-	doc = frappe.get_doc("Employee", employee)
-	doc.status = "Active"
-	doc.designation = designation
-	doc.save(ignore_permissions=True)
+		frappe.get_doc({
+			"doctype": "Fiscal Year", "year": name,
+			"year_start_date": "2026-01-01", "year_end_date": "2026-12-31",
+			"companies": [{"company": COMPANY}],
+		}).insert(ignore_permissions=True)
+	return name
+
+
+def _payroll_period_setup() -> str:
+	name = "MW Lean Payroll 2026"
+	if not frappe.db.exists("Payroll Period", name):
+		frappe.get_doc({
+			"doctype": "Payroll Period",
+			"name": name,
+			"company": COMPANY,
+			"start_date": "2026-01-01",
+			"end_date": "2026-12-31",
+		}).insert(ignore_permissions=True)
+	return name
+
+
+def _employee() -> str:
+	if not frappe.db.exists("Gender", "Female"):
+		frappe.get_doc({"doctype": "Gender", "gender": "Female"}).insert(ignore_permissions=True)
+	if not frappe.db.exists("Designation", "Barista"):
+		frappe.get_doc({"doctype": "Designation", "designation_name": "Barista"}).insert(ignore_permissions=True)
+	employee = frappe.db.get_value("Employee", {"user_id": EMPLOYEE_USER}, "name")
+	values = {
+		"first_name": "Aina", "last_name": "Rahman", "employee_number": "MWL0000001",
+		"company": COMPANY, "designation": "Barista", "gender": "Female",
+		"date_of_birth": "1998-04-15", "date_of_joining": "2026-01-01",
+		"status": "Active", "user_id": EMPLOYEE_USER, "bank_ac_no": "123456789012",
+		"custom_malaysia_citizenship_status": "Malaysian Citizen",
+		"custom_nric": "980415140001", "custom_tax_identification_number": "IG123456780",
+		"custom_epf_member_number": "10000001",
+		"custom_socso_category": "First", "custom_eis_eligible": 1,
+		# The common case: LINDUNG 24 Jam participation is the statutory default,
+		# so a real employee has no paperwork on file at all. Explicit None keeps
+		# doc.update() from carrying stale values on a re-run.
+		"custom_lindung_participation": "Participating",
+		"custom_lindung_registration_date": None,
+		"custom_lindung_effective_from": None,
+		"custom_lindung_evidence": None,
+		"custom_lindung_multiple_employers": 0,
+		"custom_pcb_resident": 1, "custom_pcb_category": "1", "custom_pcb_child_units": 0,
+	}
+	if employee:
+		doc = frappe.get_doc("Employee", employee)
+		doc.update(values)
+		doc.save(ignore_permissions=True)
+	else:
+		doc = frappe.get_doc({"doctype": "Employee", **values}).insert(ignore_permissions=True)
+		employee = doc.name
 	return employee
 
 
-def _configure_kiosk(employee: str) -> None:
-	settings = frappe.get_doc("Malaysia Workforce Settings")
-	settings.kiosk_enabled = 1
-	settings.kiosk_device_id = KIOSK_ID
-	settings.kiosk_shared_secret = KIOSK_SECRET
-	settings.kiosk_max_clock_drift_seconds = 300
-	settings.prevent_consecutive_same_checkin_type = 1
-	settings.auto_submit_verified_work_records = 0
-	settings.save(ignore_permissions=True)
-	frappe.clear_cache(doctype="Malaysia Workforce Settings")
-	set_kiosk_credential(employee, KIOSK_CREDENTIAL)
-
-
-def _signature(event_id: str, employee: str, log_type: str, timestamp) -> str:
-	payload = "|".join((event_id, KIOSK_ID, employee, log_type, str(timestamp)))
-	return hmac.new(KIOSK_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
-
-
-def _ensure_staffing_plan(company: str, employee: str, designation: str):
-	cycle_start = getdate()
-	start_time, end_time = time(8), time(12)
-	# Browser and live-suite runs can cross midnight. Reuse the already published
-	# deterministic scenario instead of manufacturing a second operational cycle.
-	plan_name = frappe.db.get_value(
-		"Cafe Staffing Plan",
-		{"company": company, "plan_title": "MW E2E Two-week Staffing Plan", "workflow_state": "Approved"},
-		"name",
-	)
-	if plan_name:
-		return frappe.get_doc("Cafe Staffing Plan", plan_name)
-	template_name = frappe.db.get_value("Cafe Coverage Template", {"template_name": "MW E2E Standard Coverage"}, "name")
-	if not template_name:
-		template_name = frappe.get_doc(
-			{
-				"doctype": "Cafe Coverage Template",
-				"template_name": "MW E2E Standard Coverage",
-				"company": company,
-				"effective_from": cycle_start,
-				"effective_until": add_days(cycle_start, 13),
-				"coverage_rows": [
-					{
-						"weekday": cycle_start.strftime("%A"),
-						"start_time": start_time,
-						"end_time": end_time,
-						"required_headcount": 1,
-						"designation": designation,
-						"criticality": "Critical",
-					}
-				],
-			}
-		).insert(ignore_permissions=True).name
-	plan = frappe.get_doc(
-		{
-			"doctype": "Cafe Staffing Plan",
-			"plan_title": "MW E2E Two-week Staffing Plan",
-			"company": company,
-			"manager": HR_MANAGER_EMAIL,
-			"cycle_start": cycle_start,
-			"coverage_template": template_name,
-		}
-	).insert(ignore_permissions=True)
-	plan = apply_workflow(plan.as_dict(), "Open Availability")
-	availability = frappe.get_doc(
-		{
-			"doctype": "Casual Availability",
-			"employee": employee,
-			"company": company,
-			"cycle_start": cycle_start,
-			"amendment_reason": "Isolated E2E setup for today's operational shift.",
-			"availability_windows": [
-				{"work_date": cycle_start, "available_from": start_time, "available_until": end_time},
-				{"work_date": add_days(cycle_start, 7), "available_from": start_time, "available_until": end_time},
-			],
-		}
-	).insert(ignore_permissions=True)
-	if availability.manager_review_status == "Pending":
-		frappe.set_user(HR_MANAGER_EMAIL)
-		availability = apply_workflow(availability.as_dict(), "Approve")
-		frappe.set_user("Administrator")
-	plan = apply_workflow(plan.as_dict(), "Generate Proposal")
-	frappe.set_user(HR_MANAGER_EMAIL)
-	approved = apply_workflow(plan.as_dict(), "Approve and Publish")
-	frappe.set_user("Administrator")
-	approved.reload()
-	return approved
-
-
-def _ensure_attendance(employee: str, assignment, work_record):
-	shift = frappe.db.get_value("Shift Assignment", assignment, "shift_type")
-	name = frappe.db.get_value(
-		"Attendance", {"employee": employee, "attendance_date": work_record.work_date, "docstatus": 1}, "name"
-	)
+def _contract(employee: str) -> str:
+	name = frappe.db.get_value("Contract", {
+		"party_type": "Employee", "party_name": employee, "docstatus": 1,
+	}, "name")
 	if name:
 		return name
-	doc = frappe.get_doc(
-		{
-			"doctype": "Attendance",
-			"employee": employee,
-			"attendance_date": work_record.work_date,
-			"company": work_record.company,
-			"status": "Present",
-			"shift": shift,
-		}
-	).insert(ignore_permissions=True)
+	doc = frappe.get_doc({
+		"doctype": "Contract", "party_type": "Employee", "party_name": employee,
+		"is_signed": 1, "start_date": "2026-01-01", "contract_terms": "Standard Malaysian employment terms.",
+		"custom_malaysia_wage_basis": "Monthly", "custom_malaysia_work_classification": "Full-time",
+		"custom_contract_wage_rate": 5000, "custom_normal_hours_per_day": 8,
+		"custom_normal_hours_per_week": 45, "custom_rest_day": "Sunday", "custom_overtime_eligible": 1,
+	}).insert(ignore_permissions=True)
 	doc.submit()
 	return doc.name
 
 
-def _exercise_kiosk(employee: str, assignment: str):
-	work_record_name = frappe.db.get_value("Shift Assignment", assignment, "custom_shift_work_record")
-	work_record = frappe.get_doc("Shift Work Record", work_record_name)
-	start, end = work_record.scheduled_start, work_record.scheduled_end
-	results = []
-	for log_type, timestamp in (("IN", start), ("OUT", end)):
-		event_id = f"MW-E2E-{log_type}-{work_record.name}"
-		results.append(
-			kiosk_clock(
-				event_id=event_id,
-				kiosk_id=KIOSK_ID,
-				employee=employee,
-				credential=KIOSK_CREDENTIAL,
-				log_type=log_type,
-				device_timestamp=str(timestamp),
-				signature=_signature(event_id, employee, log_type, timestamp),
-				offline_queued=1,
-			)
-		)
-	duplicate_id = f"MW-E2E-IN-{work_record.name}"
-	duplicate = kiosk_clock(
-		event_id=duplicate_id,
-		kiosk_id=KIOSK_ID,
-		employee=employee,
-		credential=KIOSK_CREDENTIAL,
-		log_type="IN",
-		device_timestamp=str(start),
-		signature=_signature(duplicate_id, employee, "IN", start),
-		offline_queued=1,
-	)
-	work_record.reload()
-	attendance = _ensure_attendance(employee, assignment, work_record)
-	if work_record.docstatus == 0:
-		work_record.submit()
-	return work_record, attendance, [row["name"] for row in results], duplicate
+def _accounts() -> tuple[str, str]:
+	payable = frappe.db.get_value("Account", {
+		"company": COMPANY, "account_type": "Payable", "root_type": "Liability", "is_group": 0,
+	}, "name")
+	expense = frappe.db.get_value("Account", {
+		"company": COMPANY, "root_type": "Expense", "is_group": 0,
+	}, "name")
+	if not payable or not expense:
+		frappe.throw("The isolated company does not have the required payable and expense accounts.")
+	return payable, expense
 
 
-def _ensure_payroll_setup(company: str, employee: str, from_date) -> tuple[str, str]:
-	if frappe.db.exists("Fiscal Year", "2026"):
-		fiscal_year = frappe.get_doc("Fiscal Year", "2026")
-		if company not in {row.company for row in fiscal_year.companies}:
-			fiscal_year.append("companies", {"company": company})
-			fiscal_year.save(ignore_permissions=True)
+def _salary_component(name: str, abbr: str, *, treatment: str, expense: str) -> None:
+	if not frappe.db.exists("Salary Component", name):
+		doc = frappe.get_doc({
+			"doctype": "Salary Component", "salary_component": name,
+			"salary_component_abbr": abbr, "type": "Earning", "depends_on_payment_days": 0,
+			"custom_include_in_epf_wages": 1, "custom_include_in_socso_wages": 1,
+			"custom_include_in_eis_wages": 1, "custom_include_in_hrd_levy_wages": 1,
+			"custom_pcb_treatment": treatment,
+			"custom_include_in_ordinary_rate": int(treatment == "Regular Remuneration"),
+		}).insert(ignore_permissions=True)
 	else:
-		frappe.get_doc(
-			{
-				"doctype": "Fiscal Year",
-				"year": "2026",
-				"year_start_date": "2026-01-01",
-				"year_end_date": "2026-12-31",
-				"companies": [{"company": company}],
-			}
-		).insert(ignore_permissions=True)
-	holiday_list = "MW E2E Malaysia 2026"
-	if not frappe.db.exists("Holiday List", holiday_list):
-		frappe.get_doc(
-			{
-				"doctype": "Holiday List",
-				"holiday_list_name": holiday_list,
-				"from_date": "2026-01-01",
-				"to_date": "2026-12-31",
-				"country": "Malaysia",
-			}
-		).insert(ignore_permissions=True)
-	frappe.db.set_value("Company", company, "default_holiday_list", holiday_list, update_modified=False)
-	frappe.clear_cache(doctype="Company")
-	if not frappe.db.exists(
-		"Holiday List Assignment",
-		{
-			"holiday_list": holiday_list,
-			"applicable_for": "Company",
-			"assigned_to": company,
-			"docstatus": 1,
-		},
-	):
-		holiday_assignment = frappe.get_doc(
-			{
-				"doctype": "Holiday List Assignment",
-				"naming_series": "HR-HLA-.YYYY.-",
-				"holiday_list": holiday_list,
-				"applicable_for": "Company",
-				"assigned_to": company,
-				"from_date": "2026-01-01",
-			}
-		).insert(ignore_permissions=True)
-		holiday_assignment.submit()
-	payable_account = frappe.db.get_value(
-		"Account",
-		{"company": company, "account_type": "Payable", "root_type": "Liability", "is_group": 0},
-		"name",
-	)
-	if not payable_account:
-		frappe.throw("The isolated payroll scenario requires a non-group payable account.")
-	expense_account = frappe.db.get_value(
-		"Account",
-		{"company": company, "account_name": "Salary", "root_type": "Expense", "is_group": 0},
-		"name",
-	)
-	if not expense_account:
-		frappe.throw("The isolated payroll scenario requires a non-group salary expense account.")
-	for component_name, account in {
-		"Casual Ordinary Pay": expense_account,
-		"EPF Employee": payable_account,
-		"SOCSO Employee": payable_account,
-		"SKBBK Employee": payable_account,
-		"EIS Employee": payable_account,
-		"PCB": payable_account,
-	}.items():
-		component = frappe.get_doc("Salary Component", component_name)
-		if company not in {row.company for row in component.accounts}:
-			component.append("accounts", {"company": company, "account": account})
-			component.save(ignore_permissions=True)
-	structure_name = "MW E2E Casual Fortnightly"
+		doc = frappe.get_doc("Salary Component", name)
+	if COMPANY not in {row.company for row in doc.accounts}:
+		doc.append("accounts", {"company": COMPANY, "account": expense})
+		doc.save(ignore_permissions=True)
+
+
+def _payroll_setup(employee: str) -> tuple[str, str]:
+	payable, expense = _accounts()
+	_salary_component("MW Lean Basic Pay", "MWLB", treatment="Regular Remuneration", expense=expense)
+	_salary_component("MW Lean Bonus", "MWBN", treatment="Additional Remuneration", expense=expense)
+	for component in ("EPF Employee", "SOCSO Employee", "SKBBK Employee", "EIS Employee", "PCB", "CP38", "Zakat"):
+		doc = frappe.get_doc("Salary Component", component)
+		account = expense if doc.type == "Earning" else payable
+		if COMPANY not in {row.company for row in doc.accounts}:
+			doc.append("accounts", {"company": COMPANY, "account": account})
+			doc.save(ignore_permissions=True)
+	structure_name = "MW Lean Monthly Salary"
 	if not frappe.db.exists("Salary Structure", structure_name):
-		structure = frappe.new_doc("Salary Structure")
-		structure.name = structure_name
-		structure.company = company
-		structure.is_active = "Yes"
-		structure.payroll_frequency = "Fortnightly"
-		structure.currency = "MYR"
-		structure.append("earnings", {"salary_component": "Casual Ordinary Pay", "amount": 0})
-		structure.insert(ignore_permissions=True)
+		structure = frappe.get_doc({
+			"doctype": "Salary Structure", "name": structure_name, "company": COMPANY,
+			"is_active": "Yes", "payroll_frequency": "Monthly", "currency": "MYR",
+			"earnings": [{"salary_component": "MW Lean Basic Pay", "amount": 5000}],
+			"deductions": [{"salary_component": "Zakat", "amount": 100}],
+		}).insert(ignore_permissions=True)
 		structure.submit()
-	assignment = frappe.db.get_value(
-		"Salary Structure Assignment",
-		{
-			"employee": employee,
-			"salary_structure": structure_name,
-			"company": company,
-			"docstatus": 1,
-		},
-		"name",
-	)
-	if not assignment:
-		doc = frappe.new_doc("Salary Structure Assignment")
-		doc.employee = employee
-		doc.salary_structure = structure_name
-		doc.company = company
-		doc.from_date = from_date
-		doc.base = 0
-		doc.currency = "MYR"
-		doc.payroll_payable_account = payable_account
-		doc.insert(ignore_permissions=True)
-		doc.submit()
-	return structure_name, payable_account
+	if not frappe.db.exists("Salary Structure Assignment", {
+		"employee": employee, "salary_structure": structure_name, "docstatus": 1,
+	}):
+		assignment = frappe.get_doc({
+			"doctype": "Salary Structure Assignment", "employee": employee,
+			"salary_structure": structure_name, "company": COMPANY, "from_date": "2026-01-01",
+			"base": 5000, "currency": "MYR", "payroll_payable_account": payable,
+		}).insert(ignore_permissions=True)
+		assignment.submit()
+	if not frappe.db.exists("Additional Salary", {
+		"employee": employee, "salary_component": "MW Lean Bonus", "payroll_date": PERIOD_END, "docstatus": 1,
+	}):
+		additional = frappe.get_doc({
+			"doctype": "Additional Salary", "employee": employee, "company": COMPANY,
+			"salary_component": "MW Lean Bonus", "amount": 1000, "payroll_date": PERIOD_END,
+		}).insert(ignore_permissions=True)
+		additional.submit()
+	_overtime_setup(expense)
+	return structure_name, payable
 
 
-def exercise_payroll_uat(*, commit: bool = False) -> dict:
-	"""Run standard HRMS payroll through a deterministic UAT-only bank artifact."""
-	frappe.set_user("Administrator")
-	record_row = frappe.get_all(
-		"Shift Work Record",
-		filters={
-			"company": COMPANY,
-			"docstatus": 1,
-			"status": ["in", ["Approved", "Automatically Verified", "Payroll Generated"]],
-		},
-		fields=["name", "employee", "staffing_plan"],
-		order_by="work_date asc, name asc",
-		limit=1,
-	)
-	if not record_row:
-		seed_demo()
-		record_row = frappe.get_all(
-			"Shift Work Record",
-			filters={"company": COMPANY, "docstatus": 1},
-			fields=["name", "employee", "staffing_plan"],
-			order_by="work_date asc, name asc",
-			limit=1,
-		)
-	record = record_row[0]
-	plan = frappe.get_doc("Cafe Staffing Plan", record.staffing_plan)
-	profile_name = frappe.db.get_value("Malaysia Employee Profile", {"employee": record.employee}, "name")
+def _overtime_setup(expense: str) -> None:
+	"""Configure ordinary HRMS masters; the app adds only the statutory day type."""
+	_salary_component("Cafe Overtime Pay", "CFOT", treatment="Additional Remuneration", expense=expense)
 	frappe.db.set_value(
-		"Malaysia Employee Profile",
-		profile_name,
-		{"eis_number": "980415140001"},
+		"Salary Component",
+		"Cafe Overtime Pay",
+		{"custom_include_in_epf_wages": 0, "custom_include_in_ordinary_rate": 0},
 		update_modified=False,
 	)
-	_, payable_account = _ensure_payroll_setup(COMPANY, record.employee, plan.cycle_start)
+	if not frappe.db.exists("Overtime Type", "Cafe Normal Overtime"):
+		frappe.get_doc(
+			{
+				"doctype": "Overtime Type",
+				"name": "Cafe Normal Overtime",
+				"overtime_salary_component": "Cafe Overtime Pay",
+				"overtime_calculation_method": "Fixed Hourly Rate",
+				"hourly_rate": 1,
+				"standard_multiplier": 1,
+				"maximum_overtime_hours_allowed": 8,
+				"custom_malaysia_pay_type": "Normal Overtime",
+			}
+		).insert(ignore_permissions=True)
 
-	entry_name = frappe.db.get_value(
-		"Payroll Entry",
-		{
-			"company": COMPANY,
-			"start_date": plan.cycle_start,
-			"end_date": plan.cycle_end,
-			"custom_malaysia_enabled": 1,
-			"docstatus": ["<", 2],
-		},
-		"name",
-	)
-	frappe.set_user(PAYROLL_EMAIL)
-	if entry_name:
-		entry = frappe.get_doc("Payroll Entry", entry_name)
+
+def _employee_declarations(employee: str) -> dict:
+	receipt = _private_file("mw-lean-tp1-receipt.txt", "Synthetic receipt for isolated payroll testing")
+	tp3_evidence = _private_file("mw-lean-tp3-signed.txt", "Synthetic signed TP3 for isolated payroll testing")
+	if not frappe.db.exists("Malaysia Tax Declaration TP1", {"employee": employee, "tax_year": 2026}):
+		frappe.set_user(EMPLOYEE_USER)
+		tp1 = frappe.get_doc({
+			"doctype": "Malaysia Tax Declaration TP1", "employee": employee, "company": COMPANY,
+			"tax_year": 2026, "declaration_date": "2026-07-01",
+			"employee_declaration": 1,
+			"relief_claims": [{"relief_code": "C5", "amount": 500, "claim_month": 7,
+				"evidence_reference": receipt}],
+		}).insert()
+		apply_workflow(tp1, "Send for Review")
+		frappe.set_user(HR_MANAGER)
+		apply_workflow(frappe.get_doc(tp1.doctype, tp1.name), "Approve")
+	if not frappe.db.exists("Malaysia Previous Employment TP3", {"employee": employee, "tax_year": 2026}):
+		frappe.set_user(EMPLOYEE_USER)
+		tp3 = frappe.get_doc({
+			"doctype": "Malaysia Previous Employment TP3", "employee": employee, "company": COMPANY,
+			"tax_year": 2026, "previous_employer_name": "Previous Cafe Sdn Bhd",
+			"employment_start": "2026-01-01", "employment_end": "2026-01-31",
+			"gross_normal_remuneration": 3000, "epf_contribution": 330, "mtd_paid": 25,
+			"zakat_paid": 50, "optional_reliefs": 0, "evidence": tp3_evidence,
+			"employee_declaration": 1,
+		}).insert()
+		apply_workflow(tp3, "Send for Review")
+		frappe.set_user(HR_MANAGER)
+		apply_workflow(frappe.get_doc(tp3.doctype, tp3.name), "Approve")
+	if not frappe.db.exists("Malaysia CP38 Directive", {"directive_reference": "CP38-MW-LEAN-001"}):
+		frappe.set_user(HR_MANAGER)
+		directive = frappe.get_doc({
+			"doctype": "Malaysia CP38 Directive", "employee": employee, "company": COMPANY,
+			"directive_reference": "CP38-MW-LEAN-001", "effective_from": "2026-07-01",
+			"directive_amount": 300, "monthly_deduction": 100,
+			"evidence": _private_file("mw-lean-cp38.txt", "Synthetic LHDN CP38 directive"),
+		}).insert()
+		directive.submit()
+	frappe.set_user("Administrator")
+	return {"tp1_receipt": receipt, "tp3_evidence": tp3_evidence}
+
+
+def seed_browser_site(*, commit: bool = True) -> dict:
+	frappe.set_user("Administrator")
+	_mark_setup_complete()
+	_company()
+	_fiscal_year_setup()
+	_payroll_period_setup()
+	_holiday_setup()
+	_user(EMPLOYEE_USER, "Aina", ("Employee",))
+	_user(HR_MANAGER, "Maya", ("HR Manager", "HR User"))
+	_user(PAYROLL_OWNER, "Priya", ("HR Manager", "Accounts User"))
+	_user(PAYROLL_RELEASER, "Hana", ("HR Manager", "Accounts Manager"))
+	_user(AUDITOR, "Adam", ("Auditor",))
+	# ERPNext's Company dashboard reads accounting links such as Sales Invoice.
+	# Give the isolated setup administrator Accounts Manager so clicking the
+	# standard Company form does not raise an unrelated dashboard permission dialog.
+	_user(SYSTEM_MANAGER, "Sam", ("System Manager", "Accounts Manager"))
+	for user in (HR_MANAGER, PAYROLL_OWNER, PAYROLL_RELEASER, AUDITOR):
+		_company_permission(user)
+	employee = _employee()
+	_make_employee_self_service_user(EMPLOYEE_USER)
+	_contract(employee)
+	_payroll_setup(employee)
+	_employee_declarations(employee)
+	if commit:
+		frappe.db.commit()
+	return {
+		"company": COMPANY, "employee": employee, "password": PASSWORD,
+		"users": {"employee": EMPLOYEE_USER, "hr_manager": HR_MANAGER,
+			"payroll_owner": PAYROLL_OWNER, "payroll_releaser": PAYROLL_RELEASER,
+			"auditor": AUDITOR, "system_manager": SYSTEM_MANAGER},
+	}
+
+
+def _payroll_entry(employee: str, payable: str, start_date=PERIOD_START, end_date=PERIOD_END):
+	name = frappe.db.get_value("Payroll Entry", {
+		"company": COMPANY, "start_date": start_date, "end_date": end_date, "docstatus": ["<", 2],
+	}, "name")
+	if name:
+		return frappe.get_doc("Payroll Entry", name)
+	frappe.set_user(PAYROLL_OWNER)
+	entry = frappe.get_doc({
+		"doctype": "Payroll Entry", "company": COMPANY, "posting_date": end_date,
+		"payroll_frequency": "Monthly", "start_date": start_date, "end_date": end_date,
+		"currency": "MYR", "exchange_rate": 1, "payroll_payable_account": payable,
+		"cost_center": frappe.db.get_value("Cost Center", {"company": COMPANY, "is_group": 0}, "name"),
+	}).insert()
+	entry.fill_employee_details()
+	entry.employees = [row for row in entry.employees if row.employee == employee]
+	entry.save()
+	return entry
+
+
+def _exercise_overtime(employee: str) -> dict:
+	name = frappe.db.get_value("Overtime Slip", {
+		"employee": employee, "start_date": "2026-08-01", "end_date": "2026-08-31", "docstatus": 1,
+	}, "name")
+	if name:
+		doc = frappe.get_doc("Overtime Slip", name)
 	else:
-		entry = frappe.new_doc("Payroll Entry")
-		entry.company = COMPANY
-		entry.posting_date = plan.cycle_end
-		entry.payroll_frequency = "Fortnightly"
-		entry.start_date = plan.cycle_start
-		entry.end_date = plan.cycle_end
-		entry.cost_center = "Main - MWC"
-		entry.currency = "MYR"
-		entry.exchange_rate = 1
-		entry.payroll_payable_account = payable_account
-		entry.custom_malaysia_enabled = 1
-		entry.insert()
-		entry_name = entry.name
+		frappe.set_user(HR_MANAGER)
+		doc = frappe.get_doc({
+			"doctype": "Overtime Slip", "posting_date": "2026-08-31", "employee": employee,
+			"company": COMPANY, "start_date": "2026-08-01", "end_date": "2026-08-31",
+			"total_overtime_duration": 2,
+			"overtime_details": [{"date": "2026-08-01", "overtime_type": "Cafe Normal Overtime",
+				"overtime_duration": 2, "standard_working_hours": 8}],
+		}).insert()
+		doc.submit()
+	additional = frappe.db.get_value("Additional Salary", {
+		"ref_doctype": "Overtime Slip", "ref_docname": doc.name, "docstatus": 1,
+	}, ["name", "amount"], as_dict=True)
+	return {"overtime_slip": doc.name, "additional_salary": additional.name, "amount": additional.amount}
 
-	from malaysia_workforce.banking.service import prepare_bank_file, release_payroll
-	from malaysia_workforce.payroll.services import prepare_payroll_entry
 
-	prepared = None
-	if entry.docstatus == 0 and entry.custom_malaysia_control_state != "Validated":
-		prepared = prepare_payroll_entry(entry.name)
-		if prepared["status"] != "Validated":
-			frappe.throw(f"Isolated payroll validation failed: {prepared}")
-	for name in frappe.get_all(
-		"Additional Salary",
-		filters={"ref_doctype": "Payroll Entry", "ref_docname": entry.name, "docstatus": 0},
-		pluck="name",
-	):
-		frappe.get_doc("Additional Salary", name).submit()
+def _exercise_part_time_overtime(employee: str) -> dict:
+	"""Exercise the HRMS extension across the two Regulation 5 pay bands."""
+	name = frappe.db.get_value("Overtime Slip", {
+		"employee": employee, "start_date": "2026-10-01", "end_date": "2026-10-31", "docstatus": 1,
+	}, "name")
+	if name:
+		doc = frappe.get_doc("Overtime Slip", name)
+	else:
+		contract_name = frappe.db.get_value("Contract", {
+			"party_type": "Employee", "party_name": employee, "docstatus": 1,
+		}, "name", order_by="start_date desc")
+		fields = (
+			"custom_malaysia_wage_basis", "custom_malaysia_work_classification", "custom_contract_wage_rate",
+			"custom_normal_hours_per_day", "custom_normal_hours_per_week",
+			"custom_comparable_full_time_hours_per_day", "custom_comparable_full_time_hours",
+		)
+		original = frappe.db.get_value("Contract", contract_name, list(fields), as_dict=True)
+		try:
+			frappe.db.set_value("Contract", contract_name, {
+				"custom_malaysia_wage_basis": "Hourly", "custom_malaysia_work_classification": "Part-time",
+				"custom_contract_wage_rate": 10, "custom_normal_hours_per_day": 4,
+				"custom_normal_hours_per_week": 20, "custom_comparable_full_time_hours_per_day": 8,
+				"custom_comparable_full_time_hours": 45,
+			}, update_modified=False)
+			frappe.set_user(HR_MANAGER)
+			doc = frappe.get_doc({
+				"doctype": "Overtime Slip", "posting_date": "2026-10-31", "employee": employee,
+				"company": COMPANY, "start_date": "2026-10-01", "end_date": "2026-10-31",
+				"total_overtime_duration": 6,
+				"overtime_details": [{"date": "2026-10-01", "overtime_type": "Cafe Normal Overtime",
+					"overtime_duration": 6, "standard_working_hours": 4}],
+			}).insert()
+			doc.submit()
+		finally:
+			frappe.set_user("Administrator")
+			frappe.db.set_value("Contract", contract_name, dict(original), update_modified=False)
+	additional = frappe.db.get_value("Additional Salary", {
+		"ref_doctype": "Overtime Slip", "ref_docname": doc.name, "docstatus": 1,
+	}, ["name", "amount"], as_dict=True)
+	if float(additional.amount) != 70:
+		frappe.throw(f"Expected RM 70.00 part-time additional work pay, found RM {additional.amount}.")
+	return {"overtime_slip": doc.name, "additional_salary": additional.name, "amount": additional.amount}
+
+
+def _filings() -> dict:
+	frappe.set_user(PAYROLL_RELEASER)
+	results = {}
+	for authority in ("EPF", "PERKESO", "LHDN", "HRD Corp"):
+		name = frappe.db.get_value("Malaysia Statutory Filing", {
+			"company": COMPANY, "authority": authority,
+			"period_start": PERIOD_START, "period_end": PERIOD_END, "docstatus": ["<", 2],
+		}, "name")
+		if name:
+			doc = frappe.get_doc("Malaysia Statutory Filing", name)
+		else:
+			doc = frappe.get_doc({
+				"doctype": "Malaysia Statutory Filing", "company": COMPANY, "authority": authority,
+				"period_start": PERIOD_START, "period_end": PERIOD_END,
+			}).insert()
+		if doc.docstatus == 0:
+			doc.prepare()
+			doc.reload()
+		results[authority] = {"name": doc.name, "docstatus": doc.docstatus, "file": doc.generated_file,
+			"file_hash": doc.file_hash, "employees": len(doc.employee_lines)}
+
+	# Exercise native submission plus the small external-authority acknowledgement state on EPF.
+	epf = frappe.get_doc("Malaysia Statutory Filing", results["EPF"]["name"])
+	if epf.docstatus == 0:
+		epf.submission_evidence = _private_file("mw-lean-epf-portal-receipt.txt", "Synthetic EPF portal receipt")
+		epf.save()
+		epf.submit()
+	if epf.docstatus == 1 and epf.reconciliation_status != "Reconciled":
+		epf.authority_status = "Accepted"
+		epf.acknowledgement = _private_file("mw-lean-epf-ack.txt", "Synthetic EPF acknowledgement")
+		epf.save()
+		epf.reconcile()
+	epf.reload()
+	results["EPF"].update(
+		{"docstatus": epf.docstatus, "authority_status": epf.authority_status,
+		 "reconciliation_status": epf.reconciliation_status}
+	)
+	frappe.set_user("Administrator")
+	return results
+
+
+def _permission_evidence(tp1: str, filing: str) -> dict:
+	out = {}
+	tp1_doc = frappe.get_doc("Malaysia Tax Declaration TP1", tp1)
+	filing_doc = frappe.get_doc("Malaysia Statutory Filing", filing)
+	for user in (EMPLOYEE_USER, HR_MANAGER, PAYROLL_OWNER, PAYROLL_RELEASER, AUDITOR):
+		frappe.set_user(user)
+		out[user] = {
+			"tp1_read": bool(frappe.has_permission("Malaysia Tax Declaration TP1", "read", doc=tp1_doc, user=user)),
+			"tp1_write": bool(frappe.has_permission("Malaysia Tax Declaration TP1", "write", doc=tp1_doc, user=user)),
+			"filing_read": bool(frappe.has_permission("Malaysia Statutory Filing", "read", doc=filing_doc, user=user)),
+			"filing_write": bool(frappe.has_permission("Malaysia Statutory Filing", "write", doc=filing_doc, user=user)),
+		}
+	frappe.set_user("Administrator")
+	return out
+
+
+def run_all(*, commit: bool = True) -> dict:
+	seed = seed_browser_site(commit=True)
+	employee = seed["employee"]
+	payable, _ = _accounts()
+	entry = _payroll_entry(employee, payable)
+	readiness = check_readiness(entry.name)
 	entry.reload()
+	# Payroll Entry submission is a separate native request in Desk. Commit the
+	# draft first because HRMS deliberately rolls back a failed slip batch.
+	frappe.db.commit()
 	if entry.docstatus == 0:
 		entry.submit()
 	entry.reload()
 	if frappe.db.exists("Salary Slip", {"payroll_entry": entry.name, "docstatus": 0}):
 		entry.submit_salary_slips()
 	entry.reload()
-	bank = prepare_bank_file(entry.name)
-	frappe.set_user(RELEASER_EMAIL)
-	release_blocked = False
-	try:
-		release_payroll(entry.name)
-	except frappe.ValidationError:
-		release_blocked = True
-	finally:
-		frappe.set_user("Administrator")
+	slips = frappe.get_all("Salary Slip", filters={"payroll_entry": entry.name, "docstatus": 1}, pluck="name")
+	if len(slips) != 1:
+		frappe.throw(f"Expected one submitted Salary Slip, found {len(slips)}.")
+	slip = frappe.get_doc("Salary Slip", slips[0])
+	result_rows = {row.scheme: {"employee": row.employee_amount, "employer": row.employer_amount,
+		"extra": row.extra_employee_amount, "wages": row.wage_base} for row in slip.custom_malaysia_statutory_results}
+
+	frappe.set_user("Administrator")
+	filings = _filings()
+	overtime = _exercise_overtime(employee)
+	part_time_overtime = _exercise_part_time_overtime(employee)
+	tp1 = frappe.db.get_value("Malaysia Tax Declaration TP1", {"employee": employee, "docstatus": 1})
+	# Employee access follows the linked Employee, not whichever user happened
+	# to create the declaration on their behalf.
+	frappe.db.set_value("Malaysia Tax Declaration TP1", tp1, "owner", HR_MANAGER, update_modified=False)
+	permission_evidence = _permission_evidence(tp1, filings["EPF"]["name"])
+	from malaysia_workforce.malaysia_workforce.report.malaysia_annual_remuneration.malaysia_annual_remuneration import execute as annual_report
+	from malaysia_workforce.malaysia_workforce.report.malaysia_payroll_readiness.malaysia_payroll_readiness import execute as readiness_report
+	annual_columns, annual_rows = annual_report({"company": COMPANY, "year": 2026})
+	ready_columns, ready_rows = readiness_report({"company": COMPANY, "payroll_date": PERIOD_END})
+	frappe.set_user("Administrator")
 	result = {
-		"payroll_entry": entry.name,
-		"prepared": prepared,
-		"salary_slips": frappe.get_all(
-			"Salary Slip",
-			filters={"payroll_entry": entry.name, "docstatus": 1},
-			pluck="name",
-		),
-		"bank": bank,
-		"release_blocked_without_activation": release_blocked,
+		"runtime": runtime_info(), "seed": seed,
+		"payroll": {"entry": entry.name, "readiness": readiness["status"], "salary_slip": slip.name,
+			"gross_pay": slip.gross_pay, "net_pay": slip.net_pay,
+			"statutory": result_rows, "payroll_entry_docstatus": entry.docstatus,
+			"salary_slip_docstatus": slip.docstatus},
+		"overtime": overtime, "part_time_overtime": part_time_overtime,
+		"filings": filings, "permissions": permission_evidence,
+		"reports": {"annual_rows": len(annual_rows), "annual_columns": len(annual_columns),
+			"readiness_rows": len(ready_rows), "readiness_columns": len(ready_columns)},
 	}
 	if commit:
 		frappe.db.commit()
 	return result
 
 
-def seed_demo(*, commit: bool = False) -> dict:
-	"""Seed native staffing, shifts, kiosk evidence, Attendance, and derived pay."""
+def run_source_tamper(*, commit: bool = True) -> dict:
+	"""Prove filing controls detect changed calculations and serialized identities."""
+	run_all(commit=True)
+	filing_name = frappe.db.get_value(
+		"Malaysia Statutory Filing",
+		{"company": COMPANY, "authority": "PERKESO", "period_start": PERIOD_START,
+		 "period_end": PERIOD_END, "docstatus": 0},
+		"name",
+	)
+	filing = frappe.get_doc("Malaysia Statutory Filing", filing_name)
+	frappe.set_user(PAYROLL_RELEASER)
+	first = filing.prepare()
+	filing.reload()
+	second = filing.prepare()
+	slip_names = frappe.get_all(
+		"Salary Slip",
+		filters={"company": COMPANY, "docstatus": 1, "end_date": ["between", [PERIOD_START, PERIOD_END]]},
+		pluck="name",
+	)
+	result_name = frappe.db.get_value(
+		"Malaysia Statutory Result",
+		{"parenttype": "Salary Slip", "parent": ["in", slip_names], "scheme": "SOCSO"},
+		"name",
+		order_by="modified desc",
+	)
+	original = frappe.db.get_value("Malaysia Statutory Result", result_name, "employee_amount")
+	blocked = False
+	try:
+		frappe.db.set_value("Malaysia Statutory Result", result_name, "employee_amount", float(original or 0) + 0.01,
+			update_modified=False)
+		try:
+			from malaysia_workforce.statutory.filing import validate_filing_source
+
+			validate_filing_source(filing)
+		except frappe.ValidationError:
+			blocked = True
+		if not blocked:
+			frappe.throw("The filing source change was not detected.")
+	finally:
+		frappe.db.set_value("Malaysia Statutory Result", result_name, "employee_amount", original,
+			update_modified=False)
+	employee = filing.employee_lines[0].employee
+	original_nric = frappe.db.get_value("Employee", employee, "custom_nric")
+	identity_blocked = False
+	try:
+		changed_nric = f"{str(original_nric)[:-1]}{'0' if str(original_nric)[-1] != '0' else '1'}"
+		frappe.db.set_value("Employee", employee, "custom_nric", changed_nric, update_modified=False)
+		try:
+			validate_filing_source(filing)
+		except frappe.ValidationError:
+			identity_blocked = True
+		if not identity_blocked:
+			frappe.throw("A serialized employee identity change was not detected.")
+	finally:
+		frappe.db.set_value("Employee", employee, "custom_nric", original_nric, update_modified=False)
 	frappe.set_user("Administrator")
-	company = _ensure_company()
-	_ensure_user(EMPLOYEE_EMAIL, "Aina", ("Employee", "Casual Employee"), "employee-e2e")
-	_ensure_user(HR_MANAGER_EMAIL, "Maya", ("HR Manager", "Malaysia HR Manager", "Outlet Manager"), "manager-e2e")
-	_ensure_user(PAYROLL_EMAIL, "Priya", ("Malaysia Payroll User",), "payroll-e2e")
-	_ensure_user(RELEASER_EMAIL, "Hana", ("Malaysia HR Manager",), "releaser-e2e")
-	_ensure_user(AUDITOR_EMAIL, "Adam", ("Malaysia Workforce Auditor",), "auditor-e2e")
-	for user in (HR_MANAGER_EMAIL, PAYROLL_EMAIL, RELEASER_EMAIL, AUDITOR_EMAIL):
-		_ensure_company_permission(user, company)
-	designation, _ = _ensure_designation_and_shift()
-	employee = _ensure_employee(company, designation)
-	_configure_kiosk(employee)
-	plan = _ensure_staffing_plan(company, employee, designation)
-	assignment = next(row.shift_assignment for row in plan.recommendations if row.shift_assignment)
-	work_record, attendance, checkins, duplicate = _exercise_kiosk(employee, assignment)
 	result = {
-		"company": company,
-		"employee": employee,
-		"employee_user": EMPLOYEE_EMAIL,
-		"hr_manager_user": HR_MANAGER_EMAIL,
-		"payroll_user": PAYROLL_EMAIL,
-		"releaser_user": RELEASER_EMAIL,
-		"auditor_user": AUDITOR_EMAIL,
-		"staffing_plan": plan.name,
-		"published": {"status": plan.workflow_state},
-		"shift_assignment": assignment,
-		"attendance": attendance,
-		"work_record": work_record.name,
-		"work_record_status": work_record.status,
-		"work_record_docstatus": work_record.docstatus,
-		"gross_pay": work_record.gross_pay,
-		"checkins": checkins,
-		"duplicate": duplicate,
-		"shift_start": work_record.scheduled_start,
-		"shift_end": work_record.scheduled_end,
+		"filing": filing.name,
+		"same_artifact_on_retry": first["file"] == second["file"] and first["source_hash"] == second["source_hash"],
+		"changed_source_detected": blocked,
+		"changed_identity_detected": identity_blocked,
+	}
+	if commit:
+		frappe.db.commit()
+	return result
+
+
+def run_report_permission_isolation(*, commit: bool = True) -> dict:
+	"""Prove report filters cannot bypass Company User Permissions."""
+	seed_browser_site(commit=True)
+	other_company = frappe.db.get_value("Company", {"name": ["!=", COMPANY]}, "name")
+	if not other_company:
+		other_company = frappe.get_doc({
+			"doctype": "Company",
+			"company_name": "MW Isolation Cafe Sdn Bhd",
+			"abbr": "MWI",
+			"country": "Malaysia",
+			"default_currency": "MYR",
+			"chart_of_accounts": "Standard",
+		}).insert(ignore_permissions=True).name
+		frappe.db.commit()
+	from malaysia_workforce.malaysia_workforce.report.malaysia_annual_remuneration.malaysia_annual_remuneration import execute as annual_report
+	from malaysia_workforce.malaysia_workforce.report.malaysia_payroll_readiness.malaysia_payroll_readiness import execute as readiness_report
+
+	blocked = {}
+	frappe.set_user(HR_MANAGER)
+	try:
+		for name, report, filters in (
+			("annual", annual_report, {"company": other_company, "year": 2026}),
+			("readiness", readiness_report, {"company": other_company, "payroll_date": PERIOD_END}),
+		):
+			try:
+				report(filters)
+			except frappe.PermissionError:
+				blocked[name] = True
+			else:
+				blocked[name] = False
+		if not all(blocked.values()):
+			frappe.throw(f"Company report isolation failed: {blocked}")
+	finally:
+		frappe.set_user("Administrator")
+	if commit:
+		frappe.db.commit()
+	return {"user": HR_MANAGER, "other_company": other_company, "blocked": blocked}
+
+
+def run_overtime_monthly_limit(*, commit: bool = True) -> dict:
+	"""Prove non-overlapping slips still share the calendar-month ceiling."""
+	seed = seed_browser_site(commit=True)
+	frappe.set_user(HR_MANAGER)
+	first = None
+	blocked = False
+	try:
+		first_start = date(2026, 11, 2)
+		first = frappe.get_doc({
+			"doctype": "Overtime Slip",
+			"posting_date": "2026-11-11",
+			"employee": seed["employee"],
+			"company": COMPANY,
+			"start_date": first_start,
+			"end_date": date(2026, 11, 11),
+			"total_overtime_duration": 60,
+			"overtime_details": [
+				{"date": first_start + timedelta(days=index), "overtime_type": "Cafe Normal Overtime",
+				 "overtime_duration": 6, "standard_working_hours": 8}
+				for index in range(10)
+			],
+		}).insert()
+		second_start = date(2026, 11, 20)
+		try:
+			frappe.get_doc({
+				"doctype": "Overtime Slip",
+				"posting_date": "2026-11-27",
+				"employee": seed["employee"],
+				"company": COMPANY,
+				"start_date": second_start,
+				"end_date": date(2026, 11, 27),
+				"total_overtime_duration": 48,
+				"overtime_details": [
+					{"date": second_start + timedelta(days=index), "overtime_type": "Cafe Normal Overtime",
+					 "overtime_duration": 6, "standard_working_hours": 8}
+					for index in range(8)
+				],
+			}).insert()
+		except frappe.ValidationError:
+			frappe.clear_last_message()
+			blocked = True
+		if not blocked:
+			frappe.throw("Non-overlapping Overtime Slips exceeded 104 hours without being blocked.")
+	finally:
+		frappe.set_user("Administrator")
+		if first and frappe.db.exists("Overtime Slip", first.name):
+			first.delete(ignore_permissions=True)
+	if commit:
+		frappe.db.commit()
+	return {"employee": seed["employee"], "non_overlapping_same_month_blocked": blocked}
+
+
+def run_review_guardrails(*, commit: bool = True) -> dict:
+	"""Exercise guardrails that do not need a full extra payroll cycle."""
+	seed = seed_browser_site(commit=True)
+	from malaysia_workforce.payroll.salary_slip import _classify, _cp38_amount
+	from malaysia_workforce.payroll.validation import (
+		hrd_registration_issues_for_count,
+		lindung_payroll_issues,
+		lindung_release_issues,
+	)
+
+	results = {}
+	component_name = "MW Guardrail Unclassified Earning"
+	created_component = False
+	frappe.set_user("Administrator")
+	if not frappe.db.exists("Salary Component", component_name):
+		frappe.get_doc({
+			"doctype": "Salary Component",
+			"salary_component": component_name,
+			"type": "Earning",
+		}).insert(ignore_permissions=True)
+		created_component = True
+	try:
+		try:
+			_classify(frappe._dict(earnings=[frappe._dict(
+				salary_component=component_name,
+				amount=100,
+			)]))
+		except frappe.ValidationError as exc:
+			frappe.clear_last_message()
+			results["blank_earning_treatment_blocked"] = "no Statutory Treatment" in str(exc)
+		else:
+			results["blank_earning_treatment_blocked"] = False
+	finally:
+		if created_component:
+			frappe.delete_doc("Salary Component", component_name, ignore_permissions=True)
+
+	invalid_release = frappe._dict(
+		custom_lindung_participation="Not Participating",
+		custom_lindung_registration_date=date(2026, 7, 8),
+		custom_lindung_effective_from=date(2026, 7, 12),
+		custom_lindung_evidence="/private/files/release.pdf",
+	)
+	results["invalid_lindung_window_blocked"] = bool(lindung_release_issues(invalid_release))
+	invalid_release.custom_lindung_effective_from = date(2026, 7, 13)
+	invalid_release.custom_lindung_multiple_employers = 1
+	results["multiple_employer_lindung_blocked"] = bool(lindung_payroll_issues(invalid_release))
+	results["hrd_headcount_conflict_blocked"] = bool(
+		hrd_registration_issues_for_count(
+			frappe._dict(custom_hrd_registration_class="Not Registered"),
+			10,
+			date(2026, 8, 31),
+		)
+	)
+	results["cp38_same_month_balance"] = str(_cp38_amount(
+		directive_amount=Decimal("500"),
+		monthly_deduction=Decimal("100"),
+		total_paid=Decimal("450"),
+		already_deducted=Decimal("50"),
+	))
+
+	frappe.set_user(HR_MANAGER)
+	tp3 = frappe.get_doc({
+		"doctype": "Malaysia Previous Employment TP3",
+		"employee": seed["employee"],
+		"company": COMPANY,
+		"tax_year": 2025,
+		"previous_employer_name": "Prior Cafe Sdn Bhd",
+		"employee_declaration": 1,
+	})
+	try:
+		tp3.before_submit()
+	except frappe.ValidationError as exc:
+		frappe.clear_last_message()
+		results["unsigned_tp3_blocked"] = "signed TP3" in str(exc)
+	else:
+		results["unsigned_tp3_blocked"] = False
+	finally:
+		frappe.set_user("Administrator")
+
+	expected = {
+		"blank_earning_treatment_blocked": True,
+		"invalid_lindung_window_blocked": True,
+		"multiple_employer_lindung_blocked": True,
+		"hrd_headcount_conflict_blocked": True,
+		"cp38_same_month_balance": "50.00",
+		"unsigned_tp3_blocked": True,
+	}
+	if results != expected:
+		frappe.throw(f"Review guardrail scenario failed: {results}")
+	if commit:
+		frappe.db.commit()
+	return results
+
+
+def run_tax_self_service() -> dict:
+	"""Prove employee Web Form handoff, retry safety and native HR approval."""
+	from malaysia_workforce.permissions import send_tax_declaration_for_review
+
+	seed = seed_browser_site(commit=True)
+	try:
+		frappe.set_user(EMPLOYEE_USER)
+		tp1 = frappe.get_doc({
+			"doctype": "Malaysia Tax Declaration TP1",
+			"employee": seed["employee"],
+			"company": COMPANY,
+			"tax_year": 2026,
+			"declaration_date": "2026-08-13",
+			"employee_declaration": 1,
+		}).insert()
+		first = send_tax_declaration_for_review(tp1.doctype, tp1.name)
+		second = send_tax_declaration_for_review(tp1.doctype, tp1.name)
+		if first != second or first["workflow_state"] != "Pending Review":
+			frappe.throw(f"Employee TP1 workflow handoff was not retry-safe: {first}, {second}")
+
+		tp3 = frappe.get_doc({
+			"doctype": "Malaysia Previous Employment TP3",
+			"employee": seed["employee"],
+			"company": COMPANY,
+			"tax_year": 2026,
+			"previous_employer_name": "Second Previous Cafe Sdn Bhd",
+			"previous_employer_number": "E8765432100",
+			"employment_start": "2026-02-01",
+			"employment_end": "2026-02-28",
+			"gross_normal_remuneration": 2800,
+			"epf_contribution": 308,
+			"mtd_paid": 20,
+			"evidence": _private_file(
+				"mw-lean-second-tp3-signed.txt",
+				"Synthetic signed TP3 for a second previous employer",
+			),
+			"employee_declaration": 1,
+		}).insert()
+		tp3_result = send_tax_declaration_for_review(tp3.doctype, tp3.name)
+		if tp3_result["workflow_state"] != "Pending Review":
+			frappe.throw(f"Employee TP3 did not reach Pending Review: {tp3_result}")
+
+		frappe.set_user(HR_MANAGER)
+		approved = apply_workflow(frappe.get_doc(tp3.doctype, tp3.name), "Approve")
+		if approved.docstatus != 1 or approved.workflow_state != "Approved":
+			frappe.throw(f"HR approval did not submit the second TP3: {approved.as_dict()}")
+		approved_count = frappe.db.count(
+			"Malaysia Previous Employment TP3",
+			{"employee": seed["employee"], "tax_year": 2026, "docstatus": 1},
+		)
+		if approved_count != 2:
+			frappe.throw(f"Expected two approved prior employers, found {approved_count}.")
+		return {
+			"employee": seed["employee"],
+			"tp1_state": first["workflow_state"],
+			"retry_safe": first == second,
+			"tp3_state": approved.workflow_state,
+			"approved_previous_employers": approved_count,
+		}
+	finally:
+		# The base browser seed is committed; keep this focused scenario repeatable.
+		frappe.db.rollback()
+		frappe.set_user("Administrator")
+
+
+SEPTEMBER_START = date(2026, 9, 1)
+SEPTEMBER_END = date(2026, 9, 30)
+
+
+def _submit_standalone_slip(employee: str, start, end):
+	"""Submit one Salary Slip outside a Payroll Entry, as a real off-cycle run does."""
+	frappe.set_user("Administrator")
+	slip = frappe.get_doc({
+		"doctype": "Salary Slip", "employee": employee, "company": COMPANY,
+		"payroll_frequency": "Monthly", "start_date": start, "end_date": end, "posting_date": end,
+	}).insert(ignore_permissions=True)
+	slip.submit()
+	slip.reload()
+	return slip
+
+
+def _clear_september_slips(employee: str) -> None:
+	frappe.set_user("Administrator")
+	for name in frappe.get_all(
+		"Salary Slip",
+		filters={"employee": employee, "company": COMPANY,
+			"start_date": [">=", SEPTEMBER_START], "end_date": ["<=", SEPTEMBER_END]},
+		pluck="name",
+	):
+		doc = frappe.get_doc("Salary Slip", name)
+		if doc.docstatus == 1:
+			doc.cancel()
+		doc.delete()
+	frappe.db.commit()
+
+
+def _slip_amounts(slip) -> dict:
+	socso = next(row for row in slip.custom_malaysia_statutory_results if row.scheme == "SOCSO")
+	skbbk = [row.amount for row in slip.deductions if row.salary_component == "SKBBK Employee"]
+	return {
+		"slip": slip.name,
+		"skbbk_deduction": skbbk[0] if skbbk else 0,
+		"skbbk_result": socso.extra_employee_amount,
+		"socso_employee": socso.employee_amount,
+		"socso_wage_base": socso.wage_base,
+	}
+
+
+def run_lindung_release(*, commit: bool = True) -> dict:
+	"""Prove the LINDUNG 24 Jam opt-out model end to end.
+
+	Two independent properties, both in September 2026 so no Additional Salary,
+	Overtime Slip or statutory filing from the other scenarios is disturbed:
+	two slips in one month must split the SKBBK band rather than charge it
+	twice, and a recorded Liability Release Notice must stop the deduction.
+	"""
+	from frappe.utils import flt, getdate
+
+	from malaysia_workforce.statutory.calculators.socso import calculate_socso
+
+	seed = seed_browser_site(commit=True)
+	employee = seed["employee"]
+	_clear_september_slips(employee)
+
+	# 1. Same-month delta: the second slip charges the month band less what the
+	#    first already took, never the full band again.
+	first = _slip_amounts(_submit_standalone_slip(employee, SEPTEMBER_START, date(2026, 9, 15)))
+	second = _slip_amounts(_submit_standalone_slip(employee, date(2026, 9, 16), SEPTEMBER_END))
+	month_band = calculate_socso(
+		second["socso_wage_base"], "First",
+		contribution_date=getdate(SEPTEMBER_END), lindung_participation="Participating",
+	).extra_employee
+	charged = flt(first["skbbk_deduction"]) + flt(second["skbbk_deduction"])
+	if abs(charged - float(month_band)) > 0.005:
+		frappe.throw(
+			f"SKBBK for September should total RM {month_band} across both slips, found RM {charged:.2f}."
+		)
+	if flt(second["socso_employee"]) < 0:
+		frappe.throw(f"Second slip SOCSO employee amount went negative: {second['socso_employee']}.")
+	_clear_september_slips(employee)
+
+	# 2. A recorded release stops the deduction from its effective date.
+	fields = (
+		"custom_lindung_participation",
+		"custom_lindung_registration_date",
+		"custom_lindung_effective_from",
+		"custom_lindung_evidence",
+	)
+	original = frappe.db.get_value("Employee", employee, list(fields), as_dict=True)
+	try:
+		frappe.db.set_value("Employee", employee, {
+			"custom_lindung_participation": "Not Participating",
+			"custom_lindung_registration_date": "2026-01-01",
+			"custom_lindung_effective_from": "2026-07-15",
+			"custom_lindung_evidence": _private_file(
+				"mw-lean-lindung-release-notice.txt",
+				"Synthetic PERKESO Liability Release Notice for isolated payroll testing",
+			),
+		}, update_modified=False)
+		frappe.db.commit()
+		released = _slip_amounts(_submit_standalone_slip(employee, SEPTEMBER_START, SEPTEMBER_END))
+		if released["skbbk_deduction"] or flt(released["skbbk_result"]) != 0:
+			frappe.throw(f"A released employee was still charged SKBBK: {released}.")
+	finally:
+		_clear_september_slips(employee)
+		frappe.db.set_value("Employee", employee, dict(original), update_modified=False)
+		frappe.set_user("Administrator")
+
+	result = {
+		"same_month_first": first, "same_month_second": second,
+		"september_band": str(month_band), "same_month_total_charged": round(charged, 2),
+		"released": released,
+	}
+	if commit:
+		frappe.db.commit()
+	return result
+
+
+def seed_chrome_scenarios(*, commit: bool = True) -> dict:
+	"""Create deterministic draft/submitted records for role-based UI testing."""
+	seed = seed_browser_site(commit=True)
+	employee = seed["employee"]
+	payable, _ = _accounts()
+
+	draft = _payroll_entry(employee, payable, date(2026, 11, 1), date(2026, 11, 30))
+	release_entry = _payroll_entry(employee, payable, date(2026, 12, 1), date(2026, 12, 31))
+	if release_entry.docstatus == 0:
+		check_readiness(release_entry.name)
+		frappe.db.commit()
+		release_entry.reload()
+		release_entry.submit()
+	release_entry.reload()
+	if frappe.db.exists("Salary Slip", {"payroll_entry": release_entry.name, "docstatus": 0}):
+		release_entry.submit_salary_slips()
+	release_entry.reload()
+
+	filing_name = frappe.db.get_value("Malaysia Statutory Filing", {
+		"company": COMPANY, "authority": "EPF",
+		"period_start": "2026-12-01", "period_end": "2026-12-31", "docstatus": 0,
+	}, "name")
+	if not filing_name:
+		frappe.set_user(PAYROLL_RELEASER)
+		filing_name = frappe.get_doc({
+			"doctype": "Malaysia Statutory Filing", "company": COMPANY, "authority": "EPF",
+			"period_start": "2026-12-01", "period_end": "2026-12-31",
+		}).insert().name
+
+	frappe.set_user("Administrator")
+	result = {
+		"draft_payroll_entry": draft.name,
+		"submitted_payroll_entry": release_entry.name,
+		"submitted_payroll_docstatus": release_entry.docstatus,
+		"draft_filing": filing_name,
 	}
 	if commit:
 		frappe.db.commit()
