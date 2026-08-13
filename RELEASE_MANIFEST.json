@@ -2,7 +2,7 @@
   "app": "malaysia_workforce",
   "version": "1.0.0-rc.11",
   "generated_on": "2026-08-13",
-  "file_count": 139,
+  "file_count": 140,
   "files": [
     {
       "path": ".editorconfig",
@@ -91,8 +91,8 @@
     },
     {
       "path": "docs/USER_GUIDE.md",
-      "size": 60957,
-      "sha256": "766a93706f0e33724f1135c7655c5a6529b0afe6db033b53534cbedfb5c3414b"
+      "size": 61440,
+      "sha256": "76dc0fd72bfaa0bd202659230920f7d130639eb0646e4f114aeee8259b9b4497"
     },
     {
       "path": "docs/VALIDATION.md",
@@ -126,8 +126,8 @@
     },
     {
       "path": "malaysia_workforce/install.py",
-      "size": 1892,
-      "sha256": "a2db2b77f1abe3235f8a6cd11b703e4919bce15fda6de344a64221ab3b48f91e"
+      "size": 2045,
+      "sha256": "bf7f5e98dd7b175ac6de972ec478841deb9c2340c6c006bd4a6d359c268a8674"
     },
     {
       "path": "malaysia_workforce/live_tests/__init__.py",
@@ -500,6 +500,11 @@
       "sha256": "1fa7999ff93d69e5a9636a1684f9b7d3f1aeeea2f7cecb685cc82d1f618269f1"
     },
     {
+      "path": "malaysia_workforce/setup/print_formats.py",
+      "size": 16127,
+      "sha256": "a87c0337ed8163dd3d80435a66907f88370f6a5c21f385719919cd5e09c5e6ae"
+    },
+    {
       "path": "malaysia_workforce/setup/workflows.py",
       "size": 2176,
       "sha256": "bb3142c5db17899476e9daa8a517da3c17f5bcfc9a2c33d0d5b8c632914bbedd"
@@ -661,8 +666,8 @@
     },
     {
       "path": "malaysia_workforce/tests/test_templates_and_json.py",
-      "size": 8511,
-      "sha256": "cdb951cf9e2cb6c4e0c1bd4bef7ea3cbbd2d2e4c2036c51d2351fa5c8a6c0b77"
+      "size": 9903,
+      "sha256": "cc305f4b870a333e6c23f81c4a9949357f7cfabbd7505bf6c6d694329ae550f5"
     },
     {
       "path": "malaysia_workforce/tests/test_wages.py",

@@ -558,6 +558,8 @@ If another person's information appears, stop immediately, sign out and report i
 | Request money in advance | Employee Advance | Approval and accounting happen in standard ERPNext/HRMS. |
 | View pay | Salary | Only submitted Salary Slips in a covering Payroll Period appear. |
 
+When an employee opens a submitted payslip, the **Download PDF** action uses the native **Malaysia Payslip** print format. It shows the pay period, earnings, deductions, net pay and employee/employer statutory amounts in a compact A4 layout. Internal rule versions, source hashes, filing references, journal IDs and calculation explanations remain in Frappe HR for authorised payroll users and are not printed on the employee copy. Bank accounts are masked to the last four digits.
+
 Submitting a request does not mean it is approved. Return to the same screen and check its status.
 
 ### 8.1 TP1 tax reliefs

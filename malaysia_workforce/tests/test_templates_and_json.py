@@ -81,6 +81,41 @@ def test_payslip_pdf_override_is_limited_to_the_native_hrms_endpoint():
 	assert '"wkhtmltopdf" if shutil.which("wkhtmltopdf") else "chrome"' in pdf
 
 
+def test_salary_slip_has_one_native_employee_print_format():
+	print_formats = (ROOT / "malaysia_workforce" / "setup" / "print_formats.py").read_text()
+	install = (ROOT / "malaysia_workforce" / "install.py").read_text()
+
+	assert 'SALARY_SLIP_PRINT_FORMAT = "Malaysia Payslip"' in print_formats
+	assert '"doc_type": "Salary Slip"' in print_formats
+	assert '"print_format_type": "Jinja"' in print_formats
+	assert '"pdf_generator": None' in print_formats
+	assert "ensure_salary_slip_print_format()" in install
+	assert 'make_property_setter(' in print_formats
+	assert '"default_print_format"' in print_formats
+
+	html = print_formats.split('SALARY_SLIP_HTML = r"""', 1)[1].split('"""', 1)[0]
+	for internal_field in (
+		"custom_malaysia_rule_pack",
+		"custom_malaysia_source_hash",
+		"custom_malaysia_statutory_snapshot",
+		"journal_entry",
+		"custom_malaysia_validation_errors",
+	):
+		assert internal_field not in html
+
+	assert "letter_head" in html
+	assert "fallback-letterhead" in html
+	assert "Net Pay" in html
+	assert "Statutory Contributions" in html
+	assert "page-break-inside: avoid" in html
+
+
+def test_salary_slip_print_format_does_not_add_a_second_employee_format():
+	print_formats = (ROOT / "malaysia_workforce" / "setup" / "print_formats.py").read_text()
+	assert print_formats.count('SALARY_SLIP_PRINT_FORMAT = "Malaysia Payslip"') == 1
+	assert "create_competing" not in print_formats
+
+
 def test_tax_permission_refresh_is_one_time_and_narrow():
 	patches = (ROOT / "malaysia_workforce" / "patches.txt").read_text()
 	refresh = (
