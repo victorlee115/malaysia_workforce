@@ -1,7 +1,7 @@
 {
  "name": "malaysia-workforce",
  "private": true,
- "version": "1.0.0-rc.11",
+ "version": "1.0.0-rc.12",
  "description": "Malaysian payroll and statutory localisation for Frappe HR",
  "scripts": {
   "check:js": "find malaysia_workforce -name '*.js' -print0 | xargs -0 -n1 node --check"

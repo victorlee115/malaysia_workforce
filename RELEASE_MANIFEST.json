@@ -1,6 +1,6 @@
 {
   "app": "malaysia_workforce",
-  "version": "1.0.0-rc.11",
+  "version": "1.0.0-rc.12",
   "generated_on": "2026-08-16",
   "file_count": 140,
   "files": [
@@ -26,13 +26,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 5748,
-      "sha256": "7c3830e504a203bbd19fc986b9cc148db1a03e2d2ef89ddae031058341eadf40"
+      "size": 6078,
+      "sha256": "f6ca10458cbab273a71b4832c221cec6c688ea4fc051ec4179549e307b833e17"
     },
     {
       "path": "README.md",
       "size": 3668,
-      "sha256": "208280c9630dda69622ab762dbb4da2de6355295386b0d8e4da4d08553b31c05"
+      "sha256": "54e4ead7be4fea1bc1a4d9455ea032cf195368cdd43939eaca2f646c96da3fe5"
     },
     {
       "path": "compatibility-lock.json",
@@ -76,8 +76,8 @@
     },
     {
       "path": "docs/RELEASE_VALIDATION.md",
-      "size": 4287,
-      "sha256": "2189cb5dc910fe34aa7a4ecac74befd6cea2636752ed77f1486ac069126907a7"
+      "size": 4415,
+      "sha256": "28a122e481bd9d18a87f34c9b4d8b44185c78c775134af59ead1ad8703cd24bb"
     },
     {
       "path": "docs/SECURITY.md",
@@ -107,7 +107,7 @@
     {
       "path": "malaysia_workforce/__init__.py",
       "size": 26,
-      "sha256": "8e8a9665fd745e3b5eea6e01e9d07371975150727a2495d6317628c2f64b0f15"
+      "sha256": "09b0ed8f33686a586fbdabf7e09df79116df8f23a2529ed97b0b2be5e78f4269"
     },
     {
       "path": "malaysia_workforce/api/__init__.py",
@@ -682,7 +682,7 @@
     {
       "path": "package.json",
       "size": 299,
-      "sha256": "1a40216cf671fd063e6ef60fb707c8abe84119d0f4f4b21dc51b54d0c3155ada"
+      "sha256": "73724bb9805c3ff251aa0acf646f338ef25b115613b0a3d880aff9a71183e452"
     },
     {
       "path": "pyproject.toml",

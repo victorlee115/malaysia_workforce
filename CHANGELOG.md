@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-rc.12 — 2026-08-16
+
+- Repaired upgrades from pre-lean schemas that retained permission rows for retired localization roles whose Role records no longer exist. The migration now removes only those orphaned rows before Frappe refreshes Employee Self Service permissions and still stops if a user carries a retired role.
+
 ## 1.0.0-rc.11 — 2026-08-13
 
 - Fixed employee payslip PDF downloads on hosts without `wkhtmltopdf` by selecting Frappe v16's native headless-Chrome renderer through a narrowly scoped HRMS endpoint hook.

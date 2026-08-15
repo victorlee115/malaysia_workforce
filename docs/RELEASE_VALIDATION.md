@@ -1,8 +1,8 @@
 # Release validation report
 
-**Release:** 1.0.0-rc.11
+**Release:** 1.0.0-rc.12
 
-**Validation date:** 2026-08-13
+**Validation date:** 2026-08-16
 
 **Pinned stack:** Frappe 16.31.0 / ERPNext 16.31.1 / HRMS 16.16.0 / Python 3.14 / Node 24 / MariaDB 11.4
 
@@ -19,6 +19,7 @@ The former availability, staffing, roster, employee-profile, work-agreement, shi
 ## Completed checks
 
 - Pure calculator, data-integrity, wage and template tests.
+- Upgrade-path validation for orphaned retired-role permission rows before the native Employee Self Service permission refresh.
 - Python compilation and JavaScript syntax validation. The app ships no standalone frontend bundle; its Desk JavaScript is loaded through standard DocType hooks.
 - Two consecutive migrations on the isolated MariaDB existing site.
 - Standard Payroll Entry → Salary Slip live scenario with submit-time readiness validation.
