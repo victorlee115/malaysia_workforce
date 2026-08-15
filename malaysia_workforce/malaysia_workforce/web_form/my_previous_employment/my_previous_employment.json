@@ -1,0 +1,32 @@
+{
+ "doctype":"Web Form", "name":"my-previous-employment", "module":"Malaysia Workforce", "is_standard":1,
+ "doc_type":"Malaysia Previous Employment TP3", "title":"My Previous Employment (TP3)", "route":"my-previous-employment",
+ "published":1, "login_required":1, "anonymous":0, "allow_edit":1, "allow_delete":1,
+ "allow_multiple":1, "show_list":1, "show_sidebar":0, "apply_document_permissions":1,
+ "button_label":"Send for Review", "success_title":"Sent for Review",
+ "introduction_text":"Enter the current-year amounts and itemised reliefs from your signed TP3. Tick the declaration before saving to send it for review.",
+ "success_message":"Your TP3 declaration was sent to HR for review.", "success_url":"/my-previous-employment",
+ "list_columns":[
+  {"fieldname":"tax_year","label":"Tax Year","fieldtype":"Int"},
+  {"fieldname":"previous_employer_name","label":"Previous Employer","fieldtype":"Data"},
+  {"fieldname":"workflow_state","label":"Status","fieldtype":"Data"}
+ ],
+ "web_form_fields":[
+  {"fieldname":"employee","label":"Employee","fieldtype":"Link","options":"Employee","hidden":1,"read_only":1},
+  {"fieldname":"company","label":"Company","fieldtype":"Link","options":"Company","hidden":1,"read_only":1},
+  {"fieldname":"currency","label":"Currency","fieldtype":"Data","default":"MYR","hidden":1,"read_only":1},
+  {"fieldname":"tax_year","label":"Tax Year","fieldtype":"Int","reqd":1},
+  {"fieldname":"previous_employer_name","label":"Previous Employer Name","fieldtype":"Data","reqd":1},
+  {"fieldname":"previous_employer_number","label":"Previous Employer Number","fieldtype":"Data"},
+  {"fieldname":"employment_start","label":"Employment Start","fieldtype":"Date"},
+  {"fieldname":"employment_end","label":"Employment End","fieldtype":"Date"},
+  {"fieldname":"gross_normal_remuneration","label":"Gross Normal Remuneration","fieldtype":"Currency","options":"currency"},
+  {"fieldname":"gross_additional_remuneration","label":"Gross Additional Remuneration","fieldtype":"Currency","options":"currency"},
+  {"fieldname":"epf_contribution","label":"EPF Contribution","fieldtype":"Currency","options":"currency"},
+  {"fieldname":"mtd_paid","label":"PCB Paid","fieldtype":"Currency","options":"currency"},
+  {"fieldname":"zakat_paid","label":"Zakat Paid","fieldtype":"Currency","options":"currency"},
+  {"fieldname":"relief_claims","label":"Prior TP1 Relief Claims","fieldtype":"Table","options":"Malaysia Tax Relief Claim"},
+  {"fieldname":"evidence","label":"Signed TP3 Evidence","fieldtype":"Attach","reqd":1},
+  {"fieldname":"employee_declaration","label":"I declare that this information is true and complete","fieldtype":"Check","reqd":1}
+ ]
+}

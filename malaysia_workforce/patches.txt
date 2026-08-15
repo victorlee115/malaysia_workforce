@@ -1,4 +1,9 @@
 [pre_model_sync]
 
 [post_model_sync]
-malaysia_workforce.patches.v0_9.create_missing_statutory_profiles
+malaysia_workforce.patches.v1_0.reset_localisation_permissions
+malaysia_workforce.patches.v1_0.retire_parallel_hr_roles
+malaysia_workforce.patches.v1_0.remove_parallel_workspace
+malaysia_workforce.patches.v1_0.use_native_document_lifecycle
+malaysia_workforce.patches.v1_0.correct_lindung_opt_out_default
+malaysia_workforce.patches.v1_0.refresh_tax_declaration_permissions

@@ -1,0 +1,11 @@
+{
+  "reviewed_on": "2026-08-12",
+  "source": "Minimum Wages Order 2024 and JTKSM implementation guidance",
+  "source_url": "https://gajiminimum.mohr.gov.my/",
+  "rates": [
+    {"effective_from":"2022-05-01","effective_to":"2025-01-31","scope":"All covered employers","monthly":"1500.00","hourly":"7.21"},
+    {"effective_from":"2025-02-01","effective_to":"2025-07-31","scope":"Five or more employees or MASCO professional activity","monthly":"1700.00","hourly":"8.72"},
+    {"effective_from":"2025-02-01","effective_to":"2025-07-31","scope":"Fewer than five employees and no MASCO professional activity","monthly":"1500.00","hourly":"7.21"},
+    {"effective_from":"2025-08-01","effective_to":null,"scope":"All covered employers","monthly":"1700.00","hourly":"8.72"}
+  ]
+}

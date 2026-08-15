@@ -1,73 +1,54 @@
 # Release validation report
 
-**Release:** 1.0.0-rc.4  
-**Validation date:** 2026-07-29  
-**Target:** Frappe 16 / ERPNext 16 / Frappe HR 16 / Python 3.14 / Node 24
+**Release:** 1.0.0-rc.11
 
-## Completed in this build environment
+**Validation date:** 2026-08-13
 
-- 56 pure calculation, exporter, template, JSON, validation and source-contract tests passed.
-- Every Python source file compiled successfully.
-- Every JSON file parsed successfully and custom DocType field contracts were checked.
-- Every JavaScript file passed `node --check` using the available Node 22 parser; runtime metadata requires Node 24 for the target bench.
-- Internal Python imports, hook targets, scheduler targets, patch modules and JavaScript API targets resolved statically.
-- Statutory source-table hashes matched `source_manifest.json`.
-- Release metadata and file-manifest checks passed.
-- Generated cache files, bytecode and test caches were removed from the release archive.
+**Pinned stack:** Frappe 16.31.0 / ERPNext 16.31.1 / HRMS 16.16.0 / Python 3.14 / Node 24 / MariaDB 11.4
 
-## Security and correctness defects corrected during the audit
+## Decision
 
-The earlier source was not accepted unchanged. RC3 includes the RC2 corrections and additionally addresses:
+RC11 is a lean, existing-site MariaDB- and Chrome-tested staging/UAT candidate. Employee TP1/TP3 self-service and payslip PDF download now pass, but the release is **not production ready** while clean upstream site bootstrap, external authority acceptance, parallel payroll, recovery/security drills and specialist sign-off remain open.
 
-- a legacy EPF CSV header mismatch (`Wages` instead of the guide's `Salary`);
-- the retired e-Caruman serializer being mislabelled as a current i-Akaun schema;
-- migration overwriting administrator-reviewed statutory wage classifications;
-- unmanaged Salary Components being silently adopted under reserved names;
-- roster `required_skill` fields not being enforced against Frappe HR's standard Employee Skill Map;
-- unescaped server error messages in portal notification dialogs;
-- missing duplicate-key JSON and Jinja template syntax tests.
-- Bootstrap 5-only modal calls in the employee portal even though Frappe v16 ships Bootstrap 4.6.
-- split shifts being offered even when Frappe HR would reject multiple same-date Shift Assignments.
+## Architecture verified
 
-RC2 had already corrected cross-company roster access, duplicate payroll claiming, premature statutory finalisation, unapproved time payment, Shift Assignment conflicts, malformed snapshot handling, employer-journal failures, TP1/TP3 validation, exporter numeric/encoding controls and unsafe master-data collisions.
+Standard Frappe HR remains authoritative for Employee, Contract, Salary Structure, Additional Salary, Overtime Slip, Payroll Entry and Salary Slip. The app adds Malaysian fields, calculations, tax inputs and filing preparation to those workflows.
 
-See `docs/CODE_AUDIT_AND_TEST_REPORT.md` for detail.
+The former availability, staffing, roster, employee-profile, work-agreement, shift-work-record, kiosk, bank and parallel payroll-run features have been removed. Migration patches retire their DocTypes, fields, workspace and roles.
+
+## Completed checks
+
+- Pure calculator, data-integrity, wage and template tests.
+- Python compilation and JavaScript syntax validation. The app ships no standalone frontend bundle; its Desk JavaScript is loaded through standard DocType hooks.
+- Two consecutive migrations on the isolated MariaDB existing site.
+- Standard Payroll Entry → Salary Slip live scenario with submit-time readiness validation.
+- Unsupported/incomplete setup rejection and statutory-filing source-tamper detection.
+- Cross-company report permission isolation and identity-sensitive filing fingerprints.
+- LINDUNG release-window, multiple-employer, HRD headcount, TP3 evidence and CP38 remaining-balance guardrails.
+- Calendar-month overtime aggregation across non-overlapping pending/submitted slips.
+- Employee TP1/TP3 Web Form save → native `Send for Review` Workflow handoff, including retry safety, HR approval and two distinct previous employers.
+- Monthly/full-time and hourly/part-time overtime integration through standard Overtime Slip and Additional Salary.
+- EPF, PERKESO, LHDN and HRD Corp preparation/reconciliation state machines.
+- Company/Employee permissions and read-only Auditor behaviour.
+- Chrome desktop/mobile role-screen acceptance, including TP1 and TP3 submission at 390 × 844 with no horizontal overflow and native HR Workflow actions; see [the isolated test report](ISOLATED_E2E_TEST_REPORT.md).
+- Source-table checksum, working-tree verification and exact working-tree Git-archive verification. A clean signed tag remains a release gate.
 
 ## Statutory calculation checks
 
-The suite includes the bundled LHDN PCB worked-example targets:
+Bundled LHDN PCB examples cover ordinary cumulative remuneration, TP1 relief and additional remuneration. The suite also covers effective-dated EPF, SOCSO/LINDUNG, EIS, HRD levy, minimum wage, monthly incomplete-month pay, hourly/daily wages, overtime, rest-day and public-holiday calculations, controlled TP1/TP3 relief codes, CP38, zakat rebate, invalid numeric data and unsupported scope rejection. LINDUNG 24 Jam coverage includes the opt-out default, the 1 June 2026 start, existing/new-employee release windows and unsupported multiple-employer rejection.
 
-| Case | Expected | Result |
-|---|---:|---:|
-| January normal remuneration | RM110.00 | Pass |
-| February cumulative | RM110.00 | Pass |
-| March with TP1 relief | RM108.20 | Pass |
-| April with bonus/additional remuneration | RM833.70 | Pass |
+These tests validate deterministic software behaviour against the bundled reviewed rule pack. They are not statutory certification.
 
-It also checks EPF, SOCSO/LINDUNG and EIS schedule lookups, pay-band calculations, LHDN record lengths, legacy EPF CSV constraints, PERKESO 278-character records, Jinja syntax, duplicate JSON keys, invalid numeric input and malformed statutory snapshots.
+## Known blocker
 
-## Not completed in this build environment
+Pinned Frappe 16.31.0 currently fails a brand-new MariaDB site bootstrap before this app is installed because the framework inserts the DocType field `protect_attached_files` before its bootstrap table contains that column. Existing-site migration succeeds. No local core patch is included; retest and update the compatibility lock when an official Frappe release resolves the mismatch.
 
-No operational Frappe/ERPNext/HRMS bench, MariaDB/PostgreSQL, Redis worker, browser or authority test account was available. Consequently, RC3 is **not represented as production-certified**. The following remain mandatory on the customer's staging environment:
+## External gates
 
-- fresh installation and repeated migration on the exact v16 deployment;
-- live permission tests with at least two companies and separate employees/managers;
-- database concurrency tests with multiple workers;
-- end-to-end roster, check-in, attendance, Additional Salary, Payroll Entry, Salary Slip and Journal Entry testing;
-- scheduler, queue retry and cancellation testing;
-- browser/PWA and mobile-device testing;
-- portal acceptance of LHDN, EPF and PERKESO files;
-- parallel payroll and Malaysian payroll-practitioner sign-off;
-- security review using the deployment's authentication, reverse proxy and retention settings.
+- Clean installation on an official compatible pinned stack.
+- Official portal/validator UAT for EPF i-Akaun, PERKESO/ASSIST, LHDN and HRD Corp artifacts.
+- Two parallel payroll periods and one off-cycle or year-boundary case with zero unexplained employee or authority differences.
+- Backup restoration, concurrency, security, permission and failure-recovery drills.
+- Written Malaysian payroll specialist and employer acceptance.
 
-## EPF production block
-
-The old e-Caruman CSV serializer is retained only to support isolated comparison/UAT. It is disabled by default, uses schema identifier `KWSP-ECARUMAN-LEGACY-CSV-UNVERIFIED`, is never marked portal-ready and cannot be recorded as an official submission. A current verified i-Akaun adapter remains a production gate.
-
-## Known RC3 boundaries
-
-The standby DocType, permissions, validation and expiry job are present. Automatic sequential creation of standby offers and cascading to the next worker after decline/timeout are not implemented in RC3 and must not be described as operational until added and live-tested.
-
-## Release decision
-
-RC3 is approved only as a **staging/UAT release candidate**. Production use requires every gate in `docs/VALIDATION.md` to pass.
+Live deployment must remain blocked until every gate in [VALIDATION.md](VALIDATION.md) is evidenced.

@@ -1,41 +1,38 @@
-# Statutory scope and limitations
+# Statutory scope
 
-## Responsibility
+## Included
 
-The employer remains responsible for employee classification, wage-component treatment, current rates, filing deadlines, portal acceptance, payment and record retention. This software implements a controlled calculation and audit workflow; it does not provide legal or tax advice.
+- EPF Third Schedule categories for supported Malaysian citizens/permanent residents and age bands.
+- SOCSO first/second category plus LINDUNG 24 Jam, which applies from 1 June 2026 and stops only from the effective date of an employee's own PERKESO Liability Release Notice. Per the official FAQ dated 13 July 2026: voluntary for local workers from 8 July 2026 and mandatory for foreign workers (Q3); declining is the only act that needs recording (Q5); June 2026 is mandatory and non-refundable (Q8); the employee bears the whole 0.75%, with no employer share (Q25).
+- EIS contribution schedule and eligibility switch.
+- LHDN resident PCB with regular/additional remuneration, TP1, TP3, zakat rebate and CP38.
+- HRD Corp 1% or 0.5% levy according to configured registration class, with the compulsory class enforced from ten Malaysian employees.
+- Minimum Wage Order effective dates.
+- Full-time ordinary hourly rate, normal overtime, rest-day, public-holiday, incomplete-month and termination-benefit primitives.
+- Part-time rule data and Contract validation.
 
-## Embedded rule versions
+Every rule table is checksum-protected and included in `source_manifest.json`. Calculations stop after the reviewed-through date.
 
-The release contains source-derived tables and engine identifiers for:
+### LINDUNG 24 Jam boundaries
 
-- EPF Third Schedule effective in 2025;
-- SOCSO/LINDUNG 24 Jam schedule represented in the bundled 2026 table;
-- EIS schedule represented in the bundled 2024 table;
-- LHDN computerised PCB method represented by engine version `MW-STATUTORY-2026.1`;
-- PERKESO combined fixed-width layout represented by the 2026 exporter.
+The employee release windows are enforced from the official PERKESO FAQ:
 
-Source PDF hashes and generated table hashes are recorded in `malaysia_workforce/statutory/data/source_manifest.json`. The original source PDFs are not redistributed in the app.
+- **Declaration windows.** Existing employees can be recorded as released only from 13 July through 31 August 2026 (Q16). A newly registered local employee has 30 days from PERKESO registration to decline (Q22). After the applicable window, payroll fails closed rather than accepting a late release.
+- **Multiple employers.** PERKESO permits only the selected employer to deduct LINDUNG. Phase 1 records that the employee has multiple employers and blocks automatic payroll for the case; it does not guess which employer PERKESO selected.
+- **Rate phases.** 0.75% applies 1 June 2026 – 31 May 2028, then 1.00% to 31 May 2031, then 1.25% (Q23). Only the 0.75% phase is in `socso_skbbk_2026.csv`, which is safe while `reviewed_through` precedes June 2028.
+- **June 2026 arrears.** If June was not deducted for a participant, the employer owes the arrears (Q18). The app has no arrears mechanism; handle it as an ordinary Additional Salary deduction after review.
+- **Employer grace period.** PERKESO allows employers six months from enforcement free of penalty for LINDUNG non-compliance (Q31).
 
-## Rule expiry control
+## Deliberately unsupported in Phase 1
 
-`strict_rule_review` and `rules_reviewed_through` prevent payroll after the configured review date. Do not extend the date without checking current official publications, test examples, thresholds, contribution tables and file specifications.
+- Sabah and Sarawak employment-law rules.
+- Foreign-worker, non-resident and special tax regimes. Foreign workers remain mandatorily covered by LINDUNG 24 Jam with no release available.
+- Expatriate, director-fee, share-option and other specialist PCB cases not represented by the tested input model.
+- Automatic government submission, payment acknowledgement or legal-form signing.
+- Final-pay orchestration, EA/e-Filing acceptance and every termination exception as an automated workflow.
 
-## Employee-specific treatment
+Unsupported cases must be handled outside automatic calculation after professional review; they must not be forced through the ordinary rule path.
 
-The app lets authorised users set each scheme to `Not Applicable` without approval, as requested. This is an operational control, not a legal exemption. A manual exclusion is stored with an effective date, actor, reason and history. Submitted records are never rewritten.
+## Source governance
 
-## Forms
-
-The app provides data-capture and preparation records for TP1, TP3, employee notifications and annual statements. They are not represented as pixel-identical government-issued forms. Confirm current official forms and electronic channels before use.
-
-## Electronic filing
-
-Validated files and portal links are included. Direct API submission is intentionally not simulated. Browser scraping, stored portal passwords and OTP automation are not included. An API connector may only be enabled against an official, authorised interface.
-
-## Required acceptance testing
-
-Before first production filing, upload non-production or authorised test files to each relevant authority channel and obtain written/internal acceptance evidence. Re-test whenever an authority changes a schema, portal or contribution schedule.
-
-## EPF exporter status
-
-The bundled six-column EPF CSV is a legacy e-Caruman compatibility serializer, not a representation of a verified current i-Akaun (Employer) upload contract. It is disabled by default and blocked from official-submission status. Obtain portal/UAT evidence and implement a current approved adapter before production activation.
+An authorised Malaysian payroll reviewer must compare every new rule pack to the current official EPF, PERKESO, LHDN, HRD Corp and JTKSM source, record the effective date and worked examples, update checksums, and approve the review deadline. Software tests support this review but do not replace it.

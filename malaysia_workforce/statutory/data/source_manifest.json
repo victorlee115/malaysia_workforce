@@ -10,34 +10,49 @@
   "generated_tables": {
     "eis_2024.csv": {
       "rows": 65,
-      "sha256": "47fa4ed72bda298513d16f0baf250b161009ceb973a2e61f7bd86d9da20dc123"
+      "sha256": "ee801af20a56f0bad55273d2d6d5be2b509bc3d2bfbe9f19c686b3bad93195f7"
     },
     "epf_part_a_2025.csv": {
       "rows": 401,
-      "sha256": "30fe9c54b33677c1b92caa9445a4ecafe637bc4529fe749fd7888ebad342a074"
+      "sha256": "6d572d5a2d28222b59354c605faee73684f378e1c60d263435b83ec0a104151f"
     },
     "epf_part_c_2025.csv": {
       "rows": 401,
-      "sha256": "e5ac6e842d297e69e58df67d56289f0fea17bae0ad1102ecbf841226ec409d2e"
+      "sha256": "ea2791e447e873101fb147f5aaf3223d1959d95be98fc170210ec9e4ab45274c"
     },
     "epf_part_e_2025.csv": {
       "rows": 401,
-      "sha256": "97222c7cd6a56aa044f0d6df6e812c9d33a2b7e6f396946f562ece7781f517ff"
+      "sha256": "26e5da0d104b971116e3a12d9eb73eaa7275afd15a70d34b4c56541d824946ff"
     },
     "socso_skbbk_2026.csv": {
       "rows": 65,
-      "sha256": "066b7d140c2317a8c5015f195d60f03f1c4672eaab27761c0e47e87e67b19145"
+      "sha256": "6fe2880e3c7034819e0d473dcc9e84e8b486fb2d5e0b392a43d885342fccd803"
     }
   },
+  "rule_files": {
+    "minimum_wage_2025.json": {"sha256": "2cbd6dbcaeba7d2eb80aa240f3f63110e9daf104ce72ec6847452b5691b1b396"},
+    "pay_rules_2026.json": {"sha256": "3f0a762a4793916f58c4cf22a344d49a3d1e1cad951a87bff1da36221516547d"},
+    "tp1_reliefs_2026.json": {"sha256": "fc4308722c31704e97dfe840fe4b7afe2a32630e76f6b2e749b557d72b5d7d1b"}
+  },
   "official_reference_pages": {
-    "epf_mandatory_contribution": "https://www.kwsp.gov.my/en/employer/responsibilities/mandatory-contribution",
+	"employment_act_1955": "https://jtksm.mohr.gov.my/sites/default/files/2023-11/Akta%20Kerja%201955%20%28Akta%20265%29.pdf",
+	"part_time_employees_regulations_2010": "https://jtksm.mohr.gov.my/sites/default/files/2023-03/10.%20Employment%20-%20Part-time%20Employees%20-%20Regulations%202010%20%20%281%29.pdf",
+	"epf_mandatory_contribution": "https://www.kwsp.gov.my/en/employer/responsibilities/mandatory-contribution",
     "epf_third_schedule": "https://www.kwsp.gov.my/en/epf-act-1991-third-schedule",
     "lhdn_employer_payroll": "https://www.hasil.gov.my/en/employers/",
     "lhdn_mtd_payment": "https://www.hasil.gov.my/en/employers/mtd-payment/",
     "perkeso_combined_format_faq": "https://www.perkeso.gov.my/images/lindung/lindung-24-jam/FAQ_TextFileFormat_EN.pdf",
     "perkeso_combined_format_specification": "https://www.perkeso.gov.my/images/borang/lindung24jam/formatteksfail.pdf",
     "perkeso_contribution_rates": "https://www.perkeso.gov.my/en/rate-of-contribution.html",
-    "perkeso_lindung_24_jam": "https://www.perkeso.gov.my/skim-kemalangan-bukan-bencana-kerja-lindung-24-jam.html"
+	"perkeso_lindung_24_jam": "https://www.perkeso.gov.my/en/skim-kemalangan-bukan-bencana-kerja-lindung-24-jam.html",
+	"perkeso_lindung_24_jam_faq_13072026": "https://www.perkeso.gov.my/images/lindung/lindung-24-jam/130726-FAQ_LINDUNG_24_JAM.pdf",
+	"perkeso_lindung_faedah_portal": "https://lindungfaedah.perkeso.gov.my/",
+	"tp1_2026": "https://www.hasil.gov.my/media/gjuhcbc2/bi-tp1-form-2026.pdf",
+	"hrd_corp_registered_employers": "https://hrdcorp.gov.my/registered-employers",
+	"hrd_corp_levy_deadline": "https://hrdcorp.gov.my/circulars",
+	"minimum_wage_2024": "https://gajiminimum.mohr.gov.my/",
+	"epf_ecaruman_discontinuation": "https://www.kwsp.gov.my/en/w/e-caruman-app-discontinuation",
+	"pdpa_data_breach_guidance": "https://www.pdp.gov.my/ppdpv1/en/akta/personal-data-protection-guidelines-on-data-breach-notification-dbn/"
   },
   "pcb_2026.pdf": {
     "sha256": "a1618051c858393d92d868c9975c183309d3d07e48f0e4f0cdef589f45f5800c",
@@ -47,7 +62,8 @@
     "sha256": "7412bc8d5a975e01c41440c98b5cc1d51651b437a29a96ea0c201c9e3af84a03",
     "size": 191770
   },
-  "reviewed_on": "2026-07-29",
+  "reviewed_on": "2026-08-12",
+  "reviewed_through": "2026-12-31",
   "socso_skbbk_2026.pdf": {
     "sha256": "e76b2a03740f6da4a305919c677d4935a05e9166502e5f06afe1030b7407caa1",
     "size": 219851

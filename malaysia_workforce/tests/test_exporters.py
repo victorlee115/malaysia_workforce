@@ -2,7 +2,7 @@ import csv
 import io
 from decimal import Decimal
 
-import pytest
+from malaysia_workforce.tests._assertions import raises
 
 from malaysia_workforce.statutory.exporters.epf_csv import EPFCSVRecord, generate_epf_csv
 from malaysia_workforce.statutory.exporters.lhdn_pcb import (
@@ -48,7 +48,7 @@ def test_lhdn_exhibit_4_lengths_and_totals():
 
 
 def test_lhdn_rejects_overlength_critical_fields():
-	with pytest.raises(ValueError, match="TIN"):
+	with raises(ValueError, match="TIN"):
 		render_detail(
 			LHDNPCBRecord(
 				tin="123456789012",
@@ -102,9 +102,9 @@ def test_epf_csv_has_expected_columns_and_bom():
 
 
 def test_exporters_reject_empty_files_negative_amounts_and_silent_ascii_loss():
-	with pytest.raises(ValueError, match="at least one"):
+	with raises(ValueError, match="at least one"):
 		generate_epf_csv([])
-	with pytest.raises(ValueError, match="negative"):
+	with raises(ValueError, match="negative"):
 		generate_epf_csv(
 			[
 				EPFCSVRecord(
@@ -117,7 +117,7 @@ def test_exporters_reject_empty_files_negative_amounts_and_silent_ascii_loss():
 				)
 			]
 		)
-	with pytest.raises(ValueError, match="non-ASCII"):
+	with raises(ValueError, match="non-ASCII"):
 		render_detail(
 			LHDNPCBRecord(
 				tin="IG531367080",
@@ -125,7 +125,7 @@ def test_exporters_reject_empty_files_negative_amounts_and_silent_ascii_loss():
 				new_ic="900101011234",
 			)
 		)
-	with pytest.raises(ValueError, match="non-ASCII"):
+	with raises(ValueError, match="non-ASCII"):
 		render_record(
 			PERKESOCombinedRecord(
 				employer_code="A123",

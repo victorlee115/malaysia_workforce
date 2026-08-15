@@ -2,134 +2,188 @@ from __future__ import annotations
 
 import frappe
 from frappe import _
+from frappe.utils import getdate
+
+from malaysia_workforce.payroll.validation import (
+	hrd_registration_issues,
+	lindung_payroll_issues,
+	unclassified_earning_components,
+)
+from malaysia_workforce.statutory.rule_pack import reviewed_through
 
 
-def validate_payroll_readiness(doc, method=None):
-	if not getattr(doc, "custom_malaysia_payroll_run", None):
-		return
-	run = frappe.get_doc("Malaysia Payroll Run", doc.custom_malaysia_payroll_run)
-	if run.status == "Validation Failed":
-		frappe.throw(_("The linked Malaysia Payroll Run has unresolved validation errors."))
-	if run.company != doc.company or run.start_date != doc.start_date or run.end_date != doc.end_date:
-		frappe.throw(_("Payroll Entry dates or company do not match the linked Malaysia Payroll Run."))
+def _employee_names(doc) -> list[str]:
+	return sorted({row.employee for row in (doc.employees or []) if row.employee})
 
 
-def on_payroll_entry_submit(doc, method=None):
-	run_name = getattr(doc, "custom_malaysia_payroll_run", None)
-	if not run_name:
-		return
-	# Frappe HR submits Payroll Entry before users submit its Salary Slips. The run
-	# is complete only after every linked Salary Slip is submitted.
-	frappe.db.set_value("Malaysia Payroll Run", run_name, "status", "Payroll Generated", update_modified=True)
-
-
-def maybe_finalize_run_after_salary_slip_submit(doc) -> bool:
-	"""Finalize the Malaysia run only when every Payroll Entry employee has a submitted slip."""
-	run_name = getattr(doc, "custom_malaysia_payroll_run", None)
-	payroll_entry = getattr(doc, "payroll_entry", None)
-	if not run_name or not payroll_entry:
-		return False
-	if frappe.db.get_value("Payroll Entry", payroll_entry, "docstatus") != 1:
-		return False
-
-	expected = frappe.db.count("Payroll Employee Detail", {"parent": payroll_entry, "parenttype": "Payroll Entry"})
-	if not expected:
-		return False
-	submitted = frappe.db.count("Salary Slip", {"payroll_entry": payroll_entry, "docstatus": 1})
-	draft = frappe.db.count("Salary Slip", {"payroll_entry": payroll_entry, "docstatus": 0})
-	if submitted != expected or draft:
-		return False
-
-	# Serialize concurrent final-slip submissions. All following actions are idempotent.
-	frappe.db.sql("SELECT name FROM `tabMalaysia Payroll Run` WHERE name=%s FOR UPDATE", (run_name,))
-	run = frappe.get_doc("Malaysia Payroll Run", run_name)
-	settings = frappe.get_cached_doc("Malaysia Workforce Settings")
-	if settings.auto_create_employer_contribution_journal:
-		from malaysia_workforce.payroll.services import create_employer_contribution_journal
-
-		create_employer_contribution_journal(run)
-	frappe.db.set_value("Malaysia Payroll Run", run_name, "status", "Submitted", update_modified=True)
-	if settings.auto_generate_statutory_files_on_final_run and run.is_final_run_for_month:
-		frappe.enqueue(
-			"malaysia_workforce.payroll.jobs.generate_statutory_files_for_run",
-			queue="long",
-			enqueue_after_commit=True,
-			deduplicate=True,
-			job_id=f"mw-statutory-files:{run_name}",
-			run_name=run_name,
-		)
-	return True
-
-
-
-def before_payroll_entry_cancel(doc, method=None):
-	"""Preserve authority evidence and invalidate only files that were never submitted."""
-	run_name = getattr(doc, "custom_malaysia_payroll_run", None)
-	if not run_name:
-		return
-	frozen = frappe.get_all(
-		"Statutory Submission",
-		filters={
-			"payroll_run": run_name,
-			"status": ["in", ["Submitted", "Accepted", "Rejected", "Paid", "Reconciled"]],
-		},
-		pluck="name",
-		limit_page_length=1000,
+def employee_readiness(employee: str, company: str, on_date) -> list[str]:
+	"""Return actionable setup errors without creating or changing any document."""
+	errors: list[str] = []
+	row = frappe.db.get_value(
+		"Employee",
+		employee,
+		[
+			"company",
+			"status",
+			"date_of_birth",
+			"custom_malaysia_citizenship_status",
+			"custom_tax_identification_number",
+			"custom_nric",
+			"custom_epf_member_number",
+			"custom_socso_category",
+			"custom_lindung_participation",
+			"custom_lindung_registration_date",
+			"custom_lindung_effective_from",
+			"custom_lindung_evidence",
+			"custom_lindung_multiple_employers",
+			"custom_pcb_category",
+		],
+		as_dict=True,
 	)
-	if frozen:
+	if not row or row.company != company:
+		return [_('Employee does not belong to this Company.')]
+	if row.status != "Active":
+		errors.append(_("Employee is not Active."))
+	if row.custom_malaysia_citizenship_status not in {"Malaysian Citizen", "Permanent Resident"}:
+		errors.append(_("Citizenship is outside the supported payroll scope."))
+	for value, label in (
+		(row.date_of_birth, "Date of Birth"),
+		(row.custom_nric, "NRIC"),
+		(row.custom_tax_identification_number, "Tax Identification Number"),
+		(row.custom_epf_member_number, "EPF Member Number"),
+		(row.custom_socso_category, "SOCSO Category"),
+		(row.custom_pcb_category, "PCB Category"),
+	):
+		if not value:
+			errors.append(_("{0} is missing.").format(label))
+	errors.extend(lindung_payroll_issues(row))
+
+	assignment = frappe.db.get_value(
+		"Salary Structure Assignment",
+		{"employee": employee, "docstatus": 1, "from_date": ["<=", on_date]},
+		["name", "salary_structure"],
+		as_dict=True,
+		order_by="from_date desc, creation desc",
+	)
+	if not assignment:
+		errors.append(_("No submitted Salary Structure Assignment covers the payroll date."))
+	else:
+		component_names = frappe.get_all(
+			"Salary Detail",
+			filters={
+				"parent": assignment.salary_structure,
+				"parenttype": "Salary Structure",
+				"parentfield": "earnings",
+			},
+			pluck="salary_component",
+		)
+		unclassified = unclassified_earning_components(component_names)
+		if unclassified:
+			errors.append(
+				_("Set PCB Treatment for earning components: {0}.").format(", ".join(unclassified))
+			)
+
+	contracts = frappe.get_all(
+		"Contract",
+		filters={
+			"party_type": "Employee",
+			"party_name": employee,
+			"status": "Active",
+			"start_date": ["<=", on_date],
+		},
+		fields=[
+			"name",
+			"end_date",
+			"custom_malaysia_wage_basis",
+			"custom_malaysia_work_classification",
+			"custom_contract_wage_rate",
+			"custom_normal_hours_per_day",
+			"custom_normal_hours_per_week",
+			"custom_comparable_full_time_hours_per_day",
+			"custom_comparable_full_time_hours",
+		],
+		order_by="start_date desc",
+	)
+	contract = next((item for item in contracts if not item.end_date or getdate(item.end_date) >= getdate(on_date)), None)
+	if not contract:
+		errors.append(_("No active ERPNext Contract covers the payroll date."))
+	elif not all(
+		(
+			contract.custom_malaysia_wage_basis,
+			contract.custom_malaysia_work_classification,
+			contract.custom_normal_hours_per_day,
+			contract.custom_normal_hours_per_week,
+		)
+	):
+		errors.append(_("The active Contract has incomplete Statutory Working Terms."))
+	elif contract.custom_malaysia_wage_basis in {"Daily", "Hourly"} and not contract.custom_contract_wage_rate:
+		errors.append(_("The active daily or hourly Contract is missing its rate."))
+	elif contract.custom_malaysia_work_classification == "Part-time" and not all(
+		(
+			contract.custom_comparable_full_time_hours_per_day,
+			contract.custom_comparable_full_time_hours,
+		)
+	):
+		errors.append(_("The active part-time Contract is missing comparable full-time hours."))
+
+	try:
+		from erpnext.setup.doctype.employee.employee import get_holiday_list_for_employee
+
+		get_holiday_list_for_employee(employee, on_date)
+	except frappe.ValidationError:
+		frappe.clear_last_message()
+		errors.append(_("No Holiday List is assigned for the payroll date."))
+	try:
+		from erpnext.accounts.utils import get_fiscal_year
+
+		get_fiscal_year(on_date, company=company)
+	except frappe.ValidationError:
+		frappe.clear_last_message()
+		errors.append(_("No active Fiscal Year covers the payroll date."))
+	return errors
+
+
+def readiness(doc) -> list[dict]:
+	return [
+		{"employee": employee, "issues": employee_readiness(employee, doc.company, doc.end_date)}
+		for employee in _employee_names(doc)
+	]
+
+
+def validate_payroll_release(doc, method=None):
+	if not frappe.db.get_value("Company", doc.company, "custom_enable_malaysia_payroll"):
+		return
+	company_issues = hrd_registration_issues(doc.company, doc.end_date)
+	if company_issues:
+		frappe.throw(_("Resolve the Company statutory setup before submitting this Payroll Entry:<br>{0}").format("<br>".join(company_issues)))
+	blocked = [row for row in readiness(doc) if row["issues"]]
+	if blocked:
+		details = "<br>".join(
+			f"<b>{frappe.utils.escape_html(row['employee'])}</b>: "
+			+ frappe.utils.escape_html(" ".join(row["issues"]))
+			for row in blocked
+		)
+		frappe.throw(_("Resolve the statutory setup issues before submitting this Payroll Entry:<br>{0}").format(details))
+	if not frappe.db.get_single_value("Payroll Settings", "include_holidays_in_total_working_days"):
 		frappe.throw(
-			_("Payroll cannot be cancelled because authority submission evidence exists: {0}. Create a controlled payroll adjustment instead.").format(
-				", ".join(frozen[:20])
+			_("Enable 'Include holidays in Total no. of Working Days' in Payroll Settings for calendar-day incomplete-month calculations.")
+		)
+	if getdate(doc.end_date) > reviewed_through():
+		frappe.throw(
+			_("The installed statutory rule pack is reviewed only through {0}. Install a reviewed app release before submission.").format(
+				reviewed_through()
 			)
 		)
-	for name in frappe.get_all(
-		"Statutory Submission",
-		filters={"payroll_run": run_name, "status": ["in", ["Generated", "Ready for Portal", "Not Required"]]},
-		pluck="name",
-		limit_page_length=1000,
-	):
-		submission = frappe.get_doc("Statutory Submission", name)
-		if submission.generated_file:
-			for file_name in frappe.get_all(
-				"File",
-				filters={
-					"attached_to_doctype": "Statutory Submission",
-					"attached_to_name": submission.name,
-					"attached_to_field": "generated_file",
-				},
-				pluck="name",
-			):
-				frappe.delete_doc("File", file_name, ignore_permissions=True, force=True)
-		submission.generated_file = None
-		submission.file_sha256 = None
-		submission.status = "Validation Failed"
-		submission.validation_errors = '["Linked payroll was cancelled before authority submission."]'
-		submission.save(ignore_permissions=True)
-
-def on_payroll_entry_cancel(doc, method=None):
-	run_name = getattr(doc, "custom_malaysia_payroll_run", None)
-	if not run_name:
-		return
-	from malaysia_workforce.payroll.services import cancel_employer_contribution_journal
-
-	cancel_employer_contribution_journal(run_name)
-	frappe.db.set_value("Malaysia Payroll Run", run_name, "status", "Payroll Generated", update_modified=True)
 
 
-def on_additional_salary_cancel(doc, method=None):
-	if not getattr(doc, "custom_generated_by_malaysia_workforce", None) or doc.ref_doctype != "Malaysia Payroll Run":
-		return
-	for name in frappe.get_all("Shift Work Record", filters={"additional_salary_references": ["like", f"%{doc.name}%"]}, pluck="name"):
-		record = frappe.get_doc("Shift Work Record", name)
-		references = [item for item in (record.additional_salary_references or "").splitlines() if item and item != doc.name]
-		record.db_set("additional_salary_references", "\n".join(references), update_modified=False)
-		if not references:
-			record.db_set(
-				{
-					"status": record.pre_payroll_status or "Approved",
-					"pre_payroll_status": "",
-					"payroll_run": "",
-					"payroll_date": None,
-				},
-				update_modified=True,
-			)
+@frappe.whitelist()
+def check_readiness(payroll_entry: str) -> dict:
+	doc = frappe.get_doc("Payroll Entry", payroll_entry)
+	doc.check_permission("read")
+	rows = readiness(doc)
+	company_issues = hrd_registration_issues(doc.company, doc.end_date)
+	return {
+		"status": "Needs Attention" if company_issues or any(row["issues"] for row in rows) else ("Ready" if rows else "No Employees"),
+		"company_issues": company_issues,
+		"employees": rows,
+	}

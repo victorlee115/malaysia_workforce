@@ -6,9 +6,10 @@
  "engine": "InnoDB",
  "field_order": [
   "scheme",
-  "treatment",
   "applicable",
   "wage_base",
+  "regular_wages",
+  "additional_wages",
   "employee_amount",
   "employer_amount",
   "extra_employee_amount",
@@ -25,11 +26,6 @@
    "in_list_view": 1
   },
   {
-   "fieldname": "treatment",
-   "fieldtype": "Data",
-   "label": "Treatment"
-  },
-  {
    "fieldname": "applicable",
    "fieldtype": "Check",
    "label": "Applicable",
@@ -39,24 +35,39 @@
    "fieldname": "wage_base",
    "fieldtype": "Currency",
    "label": "Wage Base",
+   "precision": "2",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "regular_wages",
+   "fieldtype": "Currency",
+   "label": "Regular Wages",
+   "precision": "2"
+  },
+  {
+   "fieldname": "additional_wages",
+   "fieldtype": "Currency",
+   "label": "Additional Wages",
    "precision": "2"
   },
   {
    "fieldname": "employee_amount",
    "fieldtype": "Currency",
    "label": "Employee Amount",
-   "precision": "2"
+   "precision": "2",
+   "in_list_view": 1
   },
   {
    "fieldname": "employer_amount",
    "fieldtype": "Currency",
    "label": "Employer Amount",
-   "precision": "2"
+   "precision": "2",
+   "in_list_view": 1
   },
   {
    "fieldname": "extra_employee_amount",
    "fieldtype": "Currency",
-   "label": "Extra Employee Amount",
+   "label": "LINDUNG 24 Jam",
    "precision": "2"
   },
   {

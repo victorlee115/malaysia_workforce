@@ -2,17 +2,21 @@
 from __future__ import annotations
 
 import ast
+import argparse
 import hashlib
 import json
 import re
 import subprocess
 import sys
+import tarfile
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "malaysia_workforce"
 ERRORS: list[str] = []
 SKIP_PARTS = {".pytest_cache", "__pycache__", "node_modules", ".git"}
+SKIP_NAMES = {".DS_Store", "RELEASE_MANIFEST.json"}
 
 
 def fail(message: str) -> None:
@@ -50,14 +54,22 @@ def check_versions_and_runtime() -> None:
 	package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
 	for expected in (
 		'requires-python = ">=3.14,<3.15"',
-		'frappe = ">=16.0.0,<17.0.0"',
-		'erpnext = ">=16.0.0,<17.0.0"',
-		'hrms = ">=16.0.0,<17.0.0"',
+		'frappe = "==16.31.0"',
+		'erpnext = "==16.31.1"',
+		'hrms = "==16.16.0"',
 	):
 		if expected not in pyproject:
 			fail(f"Missing runtime/dependency pin: {expected}")
 	if package.get("engines", {}).get("node") != ">=24":
 		fail("package.json must require Node >=24 for Frappe v16")
+	lock = json.loads((ROOT / "compatibility-lock.json").read_text(encoding="utf-8"))
+	for app, expected in (("frappe", "16.31.0"), ("erpnext", "16.31.1"), ("hrms", "16.16.0")):
+		if lock.get("apps", {}).get(app, {}).get("version") != expected:
+			fail(f"compatibility-lock.json does not pin {app} {expected}")
+	if lock.get("runtime", {}).get("database") != "MariaDB 11.4":
+		fail("compatibility-lock.json must pin the tested MariaDB 11.4 series")
+	if "image: mariadb:11.4" not in (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"):
+		fail("CI must exercise the tested MariaDB 11.4 series")
 
 
 def check_required_files() -> None:
@@ -69,13 +81,13 @@ def check_required_files() -> None:
 		"docs/INSTALLATION.md",
 		"docs/CONFIGURATION.md",
 		"docs/OPERATIONS.md",
+		"docs/USER_GUIDE.md",
 		"docs/VALIDATION.md",
 		"docs/RELEASE_VALIDATION.md",
-		"docs/CODE_AUDIT_AND_TEST_REPORT.md",
-		"docs/LIVE_ERPNext_TEST.md",
-		"docs/BUILD_ENVIRONMENT_LIMITATION.md",
 		"scripts/run_live_bench_test.sh",
-		"malaysia_workforce/live_tests/test_installation.py",
+		"scripts/generate_release_manifest.py",
+		"compatibility-lock.json",
+		"malaysia_workforce/live_tests/scenarios.py",
 	):
 		path = ROOT / relative
 		if not path.exists() or path.stat().st_size == 0:
@@ -91,7 +103,7 @@ def check_no_stale_release_markers() -> None:
 		"malaysia_workforce/install.py",
 	):
 		text = (ROOT / relative).read_text(encoding="utf-8")
-		for marker in ("1.0.0-rc.1", "1.0.0rc1", "1.0.0-rc.2", "1.0.0rc2"):
+		for marker in ("1.0.0-rc.10", "1.0.0rc10"):
 			if marker in text:
 				fail(f"Stale release marker {marker} in {relative}")
 
@@ -225,12 +237,22 @@ def check_javascript() -> None:
 
 
 def release_files() -> list[Path]:
+	try:
+		result = subprocess.run(
+			["git", "ls-files", "--cached", "-z"],
+			cwd=ROOT,
+			check=True,
+			capture_output=True,
+		)
+		paths = [ROOT / Path(raw.decode("utf-8")) for raw in result.stdout.split(b"\0") if raw]
+	except (FileNotFoundError, subprocess.CalledProcessError):
+		paths = list(ROOT.rglob("*"))
 	return sorted(
 		path
-		for path in ROOT.rglob("*")
+		for path in paths
 		if path.is_file()
-		and path.name != "RELEASE_MANIFEST.json"
-		and not any(part in SKIP_PARTS for part in path.parts)
+		and path.name not in SKIP_NAMES
+		and not any(part in SKIP_PARTS for part in path.relative_to(ROOT).parts)
 		and path.suffix != ".pyc"
 	)
 
@@ -272,7 +294,27 @@ def check_no_build_junk() -> None:
 			fail(f"Build/cache artifact present: {path.relative_to(ROOT)}")
 
 
+def verify_git_archive() -> int:
+	"""Run the same verifier inside the exact Git release-index archive."""
+	with tempfile.TemporaryDirectory(prefix="mw-release-") as temporary:
+		archive = Path(temporary) / "release.tar"
+		extracted = Path(temporary) / "release"
+		extracted.mkdir()
+		tree = subprocess.run(
+			["git", "write-tree"], cwd=ROOT, check=True, capture_output=True, text=True
+		).stdout.strip()
+		subprocess.run(["git", "archive", tree, "-o", str(archive)], cwd=ROOT, check=True)
+		with tarfile.open(archive) as handle:
+			handle.extractall(extracted, filter="data")
+		return subprocess.run([sys.executable, str(extracted / "scripts" / "verify_release.py")]).returncode
+
+
 def main() -> int:
+	parser = argparse.ArgumentParser(description="Verify a Malaysia Workforce release")
+	parser.add_argument("--git-archive", action="store_true", help="verify the exact committed Git archive")
+	args = parser.parse_args()
+	if args.git_archive:
+		return verify_git_archive()
 	check_versions_and_runtime()
 	check_required_files()
 	check_no_stale_release_markers()

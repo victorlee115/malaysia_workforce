@@ -1,0 +1,5 @@
+{
+ "doctype":"Report", "name":"Malaysia Annual Remuneration", "module":"Malaysia Workforce", "report_name":"Malaysia Annual Remuneration",
+ "ref_doctype":"Salary Slip", "report_type":"Script Report", "is_standard":"Yes", "add_total_row":1,
+ "roles":[{"role":"System Manager"},{"role":"HR Manager"},{"role":"Accounts Manager"},{"role":"Auditor"}]
+}

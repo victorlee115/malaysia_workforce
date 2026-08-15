@@ -7,6 +7,7 @@
  "field_order": [
   "relief_code",
   "description",
+  "currency",
   "amount",
   "claim_month",
   "evidence_reference",
@@ -15,21 +16,31 @@
  "fields": [
   {
    "fieldname": "relief_code",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
    "label": "Relief Code",
    "reqd": 1,
+   "options": "\nC1\nC2\nC3\nC4\nC5\nC6\nC7\nC8\nC9\nC10\nC11\nC12\nC13\nC14\nC15\nC16A\nC16B\nC17",
    "in_list_view": 1
   },
   {
    "fieldname": "description",
    "fieldtype": "Data",
    "label": "Description",
-   "reqd": 1
+   "read_only": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Data",
+   "label": "Currency",
+   "default": "MYR",
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "amount",
    "fieldtype": "Currency",
    "label": "Amount",
+   "options": "currency",
    "reqd": 1,
    "precision": "2",
    "in_list_view": 1
@@ -37,12 +48,16 @@
   {
    "fieldname": "claim_month",
    "fieldtype": "Int",
-   "label": "Claim Month"
+   "label": "Claim Month",
+   "reqd": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "evidence_reference",
-   "fieldtype": "Data",
-   "label": "Evidence Reference"
+   "fieldtype": "Attach",
+   "label": "Receipt or Evidence",
+   "reqd": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "notes",

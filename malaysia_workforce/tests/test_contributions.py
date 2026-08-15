@@ -1,4 +1,7 @@
+from datetime import date
 from decimal import Decimal
+
+import pytest
 
 from malaysia_workforce.statutory.calculators.eis import calculate_eis
 from malaysia_workforce.statutory.calculators.epf import calculate_epf, determine_category
@@ -36,21 +39,21 @@ def test_malaysian_age_categories():
 
 
 def test_socso_first_category_and_skbbk():
-	result = calculate_socso(d(5500), "First")
+	result = calculate_socso(d(5500), "First", contribution_date=date(2026, 6, 30))
 	assert result.employee == d("27.25")
 	assert result.employer == d("95.35")
 	assert result.extra_employee == d("40.85")
 
 
 def test_socso_second_category():
-	result = calculate_socso(d(5500), "Second")
+	result = calculate_socso(d(5500), "Second", contribution_date=date(2026, 6, 30))
 	assert result.employee == d("0.00")
 	assert result.employer == d("68.10")
 	assert result.extra_employee == d("40.85")
 
 
 def test_socso_and_eis_ceiling_band():
-	socso = calculate_socso(d(20000), "First")
+	socso = calculate_socso(d(20000), "First", contribution_date=date(2026, 6, 30))
 	eis = calculate_eis(d(20000))
 	assert socso.employer == d("104.15")
 	assert socso.employee == d("29.75")
@@ -63,3 +66,62 @@ def test_zero_wages_are_zero():
 	assert calculate_epf(0, "A").total == d("0.00")
 	assert calculate_socso(0).total == d("0.00")
 	assert calculate_eis(0).total == d("0.00")
+
+
+@pytest.mark.parametrize("participation", [None, "", "Participating"])
+def test_lindung_continues_by_default_after_8_july_2026(participation):
+	"""Release is an opt-out, so an employee who recorded nothing still pays."""
+	result = calculate_socso(
+		d(5500),
+		"First",
+		contribution_date=date(2026, 7, 31),
+		lindung_participation=participation,
+	)
+	assert result.extra_employee == d("40.85")
+
+
+def test_lindung_starts_on_1_june_2026():
+	before = calculate_socso(d(5500), "First", contribution_date=date(2026, 5, 31))
+	on_start = calculate_socso(d(5500), "First", contribution_date=date(2026, 6, 1))
+	assert before.extra_employee == d("0.00")
+	assert on_start.extra_employee == d("40.85")
+
+
+def test_release_notice_stops_lindung_from_its_effective_date():
+	kwargs = {"lindung_participation": "Not Participating", "lindung_effective_from": date(2026, 8, 1)}
+	july = calculate_socso(d(5500), "First", contribution_date=date(2026, 7, 31), **kwargs)
+	august = calculate_socso(d(5500), "First", contribution_date=date(2026, 8, 31), **kwargs)
+	assert july.extra_employee == d("40.85")
+	assert august.extra_employee == d("0.00")
+
+
+def test_release_notice_without_an_effective_date_keeps_deducting():
+	result = calculate_socso(
+		d(5500),
+		"First",
+		contribution_date=date(2026, 7, 31),
+		lindung_participation="Not Participating",
+	)
+	assert result.extra_employee == d("40.85")
+
+
+def test_release_cannot_take_effect_before_the_mechanism_existed():
+	"""June 2026 contributions are not refundable, so the floor clamps them."""
+	kwargs = {"lindung_participation": "Not Participating", "lindung_effective_from": date(2026, 6, 1)}
+	june = calculate_socso(d(5500), "First", contribution_date=date(2026, 6, 30), **kwargs)
+	july = calculate_socso(d(5500), "First", contribution_date=date(2026, 7, 31), **kwargs)
+	assert june.extra_employee == d("40.85")
+	assert july.extra_employee == d("0.00")
+
+
+@pytest.mark.parametrize(
+	"participation", [None, "", "Participating", "Not Participating", "Not Set", "whatever"]
+)
+def test_socso_never_raises_for_any_lindung_state(participation):
+	result = calculate_socso(
+		d(5500),
+		"First",
+		contribution_date=date(2026, 7, 31),
+		lindung_participation=participation,
+	)
+	assert result.employee == d("27.25")

@@ -91,6 +91,14 @@ def ensure_roles(*allowed: str) -> None:
 		frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
 
 
+def ensure_private_file(file_url: str, label: str = "Evidence") -> str:
+	"""Require an existing private Frappe File for control evidence supplied by API."""
+	value = str(file_url or "").strip()
+	if not value or not frappe.db.exists("File", {"file_url": value, "is_private": 1}):
+		frappe.throw(_("{0} must reference an existing private File.").format(label))
+	return value
+
+
 def get_current_employee(required: bool = True) -> str | None:
 	if frappe.session.user == "Guest":
 		if required:
@@ -105,3 +113,9 @@ def get_current_employee(required: bool = True) -> str | None:
 def validate_date_range(start, end, label: str = "date range") -> None:
 	if start and end and getdate(end) < getdate(start):
 		frappe.throw(_("End date cannot be before start date for {0}.").format(label))
+
+
+def select_for_update(query: str, values=(), **kwargs):
+	"""Lock selected rows on production databases; SQLite serializes writers itself."""
+	suffix = "" if frappe.db.db_type == "sqlite" else " FOR UPDATE"
+	return frappe.db.sql(f"{query.rstrip()}{suffix}", values, **kwargs)

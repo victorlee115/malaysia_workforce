@@ -1,0 +1,20 @@
+{
+ "doctype":"Workspace", "name":"Malaysia Payroll", "label":"Malaysia Payroll", "title":"Malaysia Payroll",
+ "module":"Malaysia Workforce", "icon":"money-coins-1", "public":1, "is_hidden":0, "hide_custom":0,
+ "content":"[{\"id\":\"header-records\",\"type\":\"header\",\"data\":{\"text\":\"Malaysia Payroll\",\"col\":12}},{\"id\":\"card-employee\",\"type\":\"card\",\"data\":{\"card_name\":\"Employee Tax Records\",\"col\":6}},{\"id\":\"card-payroll\",\"type\":\"card\",\"data\":{\"card_name\":\"Payroll and Filing\",\"col\":6}}]",
+ "links":[
+  {"label":"Employee Tax Records","type":"Card Break"},
+  {"label":"TP1 Tax Reliefs","link_to":"Malaysia Tax Declaration TP1","link_type":"DocType","type":"Link"},
+  {"label":"TP3 Previous Employment","link_to":"Malaysia Previous Employment TP3","link_type":"DocType","type":"Link"},
+  {"label":"CP38 Directives","link_to":"Malaysia CP38 Directive","link_type":"DocType","type":"Link"},
+  {"label":"Payroll and Filing","type":"Card Break"},
+  {"label":"Payroll Readiness","link_to":"Malaysia Payroll Readiness","link_type":"Report","type":"Link"},
+  {"label":"Payroll Entries","link_to":"Payroll Entry","link_type":"DocType","type":"Link"},
+  {"label":"Salary Slips","link_to":"Salary Slip","link_type":"DocType","type":"Link"},
+  {"label":"Statutory Filings","link_to":"Malaysia Statutory Filing","link_type":"DocType","type":"Link"},
+  {"label":"Annual Remuneration","link_to":"Malaysia Annual Remuneration","link_type":"Report","type":"Link"}
+ ],
+ "shortcuts":[],
+ "roles":[{"role":"System Manager"},{"role":"HR Manager"},{"role":"Accounts Manager"},{"role":"Auditor"}],
+ "charts":[], "custom_blocks":[], "number_cards":[], "quick_lists":[], "sequence_id":15
+}

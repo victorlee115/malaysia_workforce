@@ -1,144 +1,44 @@
 # Configuration
 
+Configure standard Frappe HR first; then complete the statutory sections added to the same records.
+
 ## 1. Company
 
-For each Malaysian company:
+On the standard Company form, open `Statutory Payroll`:
 
-- Country: Malaysia
-- Default Currency: MYR
-- Enable Malaysia Payroll: enabled
-- LHDN HQ Number
-- LHDN Employer Number
-- EPF Employer Number
-- SOCSO Employer Code
-- SSM / Company Registration Number
-- Default Payroll Payable Account in Frappe HR
+- set Country to Malaysia and enable Statutory Payroll;
+- keep Phase 1 jurisdiction as Peninsular Malaysia;
+- enter SSM, LHDN, EPF and PERKESO employer identifiers;
+- select the actual HRD Corp registration class and effective date;
 
-Use separate companies for separate legal employers. Do not reuse one statutory employer number across unrelated Company records.
+In Payroll Settings enable `Include holidays in Total no. of Working Days`; the app requires this for Malaysia calendar-day incomplete-month treatment.
 
-## 2. Malaysia Workforce Settings
+## 2. Employee
 
-Review every field before production:
+Use the standard Employee form. Open `Statutory Details` and enter citizenship status, NRIC, tax ID, EPF member number, SOCSO category, EIS eligibility and PCB status. LINDUNG 24 Jam participation is the statutory default from 1 June 2026 and needs no entry. Record `Not Participating`, the PERKESO registration date, release effective date and notice only when the employee personally filed a PERKESO Liability Release Notice. Mark `Has Multiple Employers` when applicable; phase 1 then stops payroll rather than guessing PERKESO's selected employer.
 
-### Roster and attendance
+Link the Employee to a User whose User Type is `Employee Self Service`. Employees sign in through `/login?redirect-to=/hrms/home` for Frappe HR's mobile/PWA. TP1 and TP3 notifications should link directly to `/my-tax-reliefs/new` and `/my-previous-employment/new`; there is no custom employee portal.
 
-- Slot length, minimum shift duration and minimum hourly rate.
-- Minimum-wage effective date.
-- Application reminders.
-- Check-in windows and automatic verification tolerance.
-- Whether mobile geolocation is required.
-- Whether verified work records are automatically submitted.
+Create a standard Payroll Period covering the payroll year. The HRMS PWA filters Salary Slips through Payroll Period; without one, submitted slips exist in Desk but the employee sees `No salary slips found`.
 
-### Statutory controls
+These fields are restricted at permission level 1. Phase 1 rejects foreign-worker and unsupported-jurisdiction cases instead of estimating them.
 
-- `strict_rule_review` should remain enabled.
-- Set `rules_reviewed_through` only after payroll/legal review of current tables and specifications.
-- Choose the interim PCB method for non-final pay runs.
-- Verify all Salary Component links.
+## 3. Employment terms
 
-### Employer accounting
+Use the standard ERPNext `Contract`; do not create a separate work-agreement record. Complete wage basis, full-time/part-time classification, contract rate, normal daily/weekly hours, rest day and overtime eligibility. A part-time Contract also needs comparable full-time weekly hours.
 
-Map valid non-group accounts belonging to the same company:
+Use standard Salary Structure and Salary Structure Assignment for payroll amounts. The Contract is rules context, not a second salary structure.
 
-- Employer EPF Expense / EPF Payable
-- Employer SOCSO Expense / SOCSO Payable
-- Employer EIS Expense / EIS Payable
+## 4. Salary components
 
-Disable automatic Journal Entry creation until mappings are tested.
+For every earning, select its EPF, SOCSO, EIS and HRD wage treatment, PCB treatment, and ordinary-rate treatment. Configure standard HRMS Overtime Types for normal overtime, rest-day work and public-holiday work, select the corresponding `Statutory Day Type`, and use normal Salary Components. The app creates only the deductions it owns: EPF Employee, SOCSO Employee, SKBBK Employee (the LINDUNG 24 Jam amount in the current PERKESO text specification), EIS Employee, PCB, CP38 and Zakat. Configure their Company accounts without renaming them.
 
-### Submission
+Zakat remains an ordinary Salary Structure or Additional Salary deduction; the app uses it as the PCB rebate.
 
-Review official portal URLs. Leave API mode disabled unless an authority has formally provisioned an interface and credentials.
+## 5. Tax inputs
 
-## 3. Salary Components
+Employees prepare TP1 for optional reliefs and one TP3 for each previous employer that paid them in the same tax year. Prior TP1 reliefs on every TP3 must be itemised with the same controlled codes and evidence; the app enforces one combined annual limit across all approved TP3 records and the current TP1. Selecting **Send for Review** saves the Web Form and applies Frappe's native Workflow transition to Pending Review. HR Manager approves or returns each declaration after reviewing its evidence. HR Manager records CP38 directly from the LHDN directive.
 
-Each earning must be independently classified for:
+## 6. Standard HRMS payroll
 
-- EPF wages
-- SOCSO wages
-- EIS wages
-- PCB remuneration
-- PCB remuneration type: regular, additional, benefit in kind, perquisite or not applicable
-
-Do not infer statutory treatment from the component name. Review allowances, overtime, arrears, bonuses, commissions and benefits with your Malaysian payroll adviser.
-
-## 4. Employee profile
-
-Create one effective profile containing identity and statutory registration data:
-
-- NRIC or passport and passport country code
-- nationality status
-- tax number, residence, category and regime
-- EPF, SOCSO and EIS numbers
-- disability and child-unit fields
-- SOCSO category and EIS eligibility
-- LINDUNG designation where another employer is involved
-
-Identity fields are normalised and duplicate active identities are rejected.
-
-## 5. Work agreement
-
-Create an effective-dated agreement for each employee. Do not overwrite a historical agreement after payroll use.
-
-For casual workers typically use:
-
-- Work Arrangement: Casual
-- Contract Relationship: according to the actual legal relationship
-- Regularity: Occasional or Irregular where accurate
-- Pay Basis: Hourly
-- Base Hourly Rate
-- Normal and maximum hours
-- Comparable full-time hours
-- Minimum shift length
-- Rest day
-- Split-shift permission
-- Branch and Shift Location
-
-The app warns or blocks overlapping agreements, rates below the configured minimum and invalid hour limits.
-
-## 6. Statutory coverage profile
-
-Create an effective-dated profile containing all five schemes:
-
-- EPF
-- SOCSO
-- EIS
-- PCB
-- LINDUNG 24 Jam
-
-Available treatment values:
-
-- Automatic
-- Applicable
-- Not Applicable
-- Pending Review
-
-There is no approval step. An authorised HR/payroll user saves changes immediately. Use permissions to limit this power. Enter a reason and review the warning before setting `Not Applicable` for a person recorded under a contract of service.
-
-`Pending Review` blocks payroll for that employee. `Applicable` with a zero result remains different from `Not Applicable`.
-
-## 7. Salary structure
-
-Every employee included in a Payroll Entry needs an active submitted Salary Structure Assignment. The app can create a minimal flexible-worker structure for casual pay, but production accounts and component policies must still be reviewed.
-
-## 8. Roster setup
-
-Create a Casual Roster with:
-
-- date range and application window;
-- manager, branch, location, project and instructions;
-- one or more coverage rows with date, start/end, role, headcount and rate.
-
-Open the roster. Employees see it only when eligible. They submit exact windows and choose whether exact selected hours require confirmation.
-
-## 9. Holiday lists
-
-Assign the correct state/location Holiday List to employees or shifts. Public-holiday pay relies on the applicable holiday context and must be tested for each operating state.
-
-## EPF legacy CSV control
-
-`Enable Legacy EPF e-Caruman CSV (UAT Only)` is disabled by default. Leave it disabled in production. The serializer follows the discontinued e-Caruman guide and is not a verified current i-Akaun (Employer) adapter. Enabling it only permits isolated comparison/UAT generation; the resulting file remains `Generated`, never `Ready for Portal`, and cannot be marked as an official submission.
-
-## Split shifts and standard Frappe HR settings
-
-Malaysia Workforce creates standard Frappe HR Shift Assignment records. To allow two non-overlapping assignments for one employee on the same date, enable **HR Settings → Allow Multiple Shift Assignments for Same Date**. When this standard setting is disabled, the employee portal disables split-shift opt-in and server validation blocks a second same-date selection before roster publication.
+Maintain Holiday Lists, Fiscal Years, Salary Structures, Salary Structure Assignments, Additional Salary and Overtime Slips in HRMS/ERPNext. The app does not duplicate these records.

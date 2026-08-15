@@ -1,0 +1,25 @@
+{
+ "doctype":"DocType", "name":"Malaysia CP38 Directive", "module":"Malaysia Workforce", "engine":"InnoDB",
+ "autoname":"naming_series:", "title_field":"employee", "track_changes":1, "is_submittable":1,
+ "field_order":["naming_series","employee","company","directive_reference","effective_from","effective_to","directive_amount","monthly_deduction","amount_deducted","balance","evidence","amended_from"],
+ "fields":[
+  {"fieldname":"naming_series","label":"Series","fieldtype":"Select","options":"MY-CP38-.YYYY.-.#####","default":"MY-CP38-.YYYY.-.#####","reqd":1},
+  {"fieldname":"employee","label":"Employee","fieldtype":"Link","options":"Employee","reqd":1,"in_list_view":1},
+  {"fieldname":"company","label":"Company","fieldtype":"Link","options":"Company","fetch_from":"employee.company","reqd":1},
+  {"fieldname":"directive_reference","label":"Directive Reference","fieldtype":"Data","reqd":1,"unique":1,"in_list_view":1},
+  {"fieldname":"effective_from","label":"Effective From","fieldtype":"Date","reqd":1},
+  {"fieldname":"effective_to","label":"Effective To","fieldtype":"Date"},
+  {"fieldname":"directive_amount","label":"Directive Amount","fieldtype":"Currency","options":"MYR","reqd":1},
+  {"fieldname":"monthly_deduction","label":"Monthly Deduction","fieldtype":"Currency","options":"MYR","reqd":1},
+  {"fieldname":"amount_deducted","label":"Amount Deducted","fieldtype":"Currency","options":"MYR","read_only":1},
+  {"fieldname":"balance","label":"Balance","fieldtype":"Currency","options":"MYR","read_only":1,"in_list_view":1},
+  {"fieldname":"evidence","label":"LHDN Directive","fieldtype":"Attach","reqd":1},
+  {"fieldname":"amended_from","label":"Amended From","fieldtype":"Link","options":"Malaysia CP38 Directive","read_only":1,"no_copy":1}
+ ],
+ "permissions":[
+  {"role":"System Manager","read":1,"write":1,"create":1,"delete":1,"submit":1,"cancel":1,"amend":1,"print":1,"report":1,"export":1},
+  {"role":"HR Manager","read":1,"write":1,"create":1,"submit":1,"cancel":1,"amend":1,"print":1,"report":1,"export":1},
+  {"role":"Auditor","read":1,"print":1,"report":1,"export":1}
+ ],
+ "sort_field":"modified", "sort_order":"DESC"
+}

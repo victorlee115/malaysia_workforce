@@ -15,6 +15,9 @@ def test_generated_statutory_tables_match_manifest():
 		with path.open(newline="", encoding="utf-8") as handle:
 			rows = sum(1 for _ in csv.DictReader(handle))
 		assert rows == expected["rows"]
+	for filename, expected in manifest["rule_files"].items():
+		path = DATA_DIR / filename
+		assert hashlib.sha256(path.read_bytes()).hexdigest() == expected["sha256"]
 
 
 def test_all_doctype_json_is_parseable():
