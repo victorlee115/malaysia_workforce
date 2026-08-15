@@ -131,6 +131,20 @@ def test_tax_permission_refresh_is_one_time_and_narrow():
 	assert '"Malaysia Previous Employment TP3"' in refresh
 	assert "for doctype in AUDITOR_SOURCE_DOCTYPES" not in refresh
 	assert "reset_perms" not in refresh
+	assert "remove_legacy_permission_rows" in refresh
+
+
+def test_retired_role_permission_cleanup_removes_docperm_and_custom_docperm_rows():
+	retire = (
+		ROOT
+		/ "malaysia_workforce"
+		/ "patches"
+		/ "v1_0"
+		/ "retire_parallel_hr_roles.py"
+	).read_text()
+	assert "def remove_legacy_permission_rows" in retire
+	assert 'frappe.db.delete(doctype, {"role": ["in", legacy_roles]})' in retire
+	assert "require_reviewed_role_mapping()" in retire
 
 
 def test_employee_tax_web_forms_send_drafts_through_native_workflow():

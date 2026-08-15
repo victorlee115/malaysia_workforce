@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import frappe
 
+from malaysia_workforce.patches.v1_0.retire_parallel_hr_roles import remove_legacy_permission_rows
 from malaysia_workforce.setup.permissions import _ensure_permission, ensure_employee_self_service_access
 
 
@@ -13,6 +14,11 @@ TAX_DECLARATION_DOCTYPES = (
 
 def execute():
 	"""Add only native Workflow rights omitted by the first lean migration."""
+	# The retirement patch may already be recorded as complete on an upgraded
+	# site, while its old DocPerm rows can still reference a deleted role.
+	# Clean those rows before Frappe's User Type updater copies permissions.
+	remove_legacy_permission_rows()
+
 	for doctype in TAX_DECLARATION_DOCTYPES:
 		if not frappe.db.exists("DocType", doctype):
 			continue

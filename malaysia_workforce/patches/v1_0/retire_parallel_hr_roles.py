@@ -35,16 +35,30 @@ def require_reviewed_role_mapping() -> None:
 	)
 
 
+def remove_legacy_permission_rows() -> None:
+	"""Remove stale permission rows after retired roles have been reviewed.
+
+	Older releases stored the retired roles in both ``DocPerm`` and
+	``Custom DocPerm``.  The Role records may be gone while those child rows
+	remain.  Frappe's ``setup_custom_perms`` copies ``DocPerm`` rows and then
+	validates the Role link, so a later migration can fail on an already-retired
+	role.  Never remove these rows while a user still carries one of the roles.
+	"""
+	require_reviewed_role_mapping()
+	legacy_roles = tuple(LEGACY_ROLE_REPLACEMENTS)
+	for doctype in ("DocPerm", "Custom DocPerm"):
+		frappe.db.delete(doctype, {"role": ["in", legacy_roles]})
+
+
 def execute():
 	"""Retire unassigned roles from the abandoned parallel HR application.
 
 	There is deliberately no automatic role translation: names that sound
 	equivalent do not prove equivalent permissions.
 	"""
-	require_reviewed_role_mapping()
+	remove_legacy_permission_rows()
 
 	legacy_roles = tuple(LEGACY_ROLE_REPLACEMENTS)
-	frappe.db.delete("Custom DocPerm", {"role": ["in", legacy_roles]})
 
 	for role in legacy_roles:
 		if frappe.db.exists("Role", role):

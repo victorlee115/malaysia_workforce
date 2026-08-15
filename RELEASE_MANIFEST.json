@@ -1,7 +1,7 @@
 {
   "app": "malaysia_workforce",
   "version": "1.0.0-rc.11",
-  "generated_on": "2026-08-13",
+  "generated_on": "2026-08-16",
   "file_count": 140,
   "files": [
     {
@@ -401,8 +401,8 @@
     },
     {
       "path": "malaysia_workforce/patches/v1_0/refresh_tax_declaration_permissions.py",
-      "size": 812,
-      "sha256": "5bbd640dbef1cf2435f769ca006b480449a5ac9bde926a2f7cc5c02b40d92b29"
+      "size": 1166,
+      "sha256": "db6ada0c076f445b8aece212be7535dbe42a736d3243eba4609da5e73578d767"
     },
     {
       "path": "malaysia_workforce/patches/v1_0/remove_parallel_workspace.py",
@@ -416,8 +416,8 @@
     },
     {
       "path": "malaysia_workforce/patches/v1_0/retire_parallel_hr_roles.py",
-      "size": 1566,
-      "sha256": "6c2216dd6521237ba94fe36232ee3066a0526a7510f16158aa154afb58036491"
+      "size": 2181,
+      "sha256": "04708ddea557e213aea686c0f6dbe3870058d65947f3c90914b367a141216133"
     },
     {
       "path": "malaysia_workforce/patches/v1_0/use_native_document_lifecycle.py",
@@ -666,8 +666,8 @@
     },
     {
       "path": "malaysia_workforce/tests/test_templates_and_json.py",
-      "size": 9903,
-      "sha256": "cc305f4b870a333e6c23f81c4a9949357f7cfabbd7505bf6c6d694329ae550f5"
+      "size": 10342,
+      "sha256": "cf3898a823a275b015fc41952a606eeb7dd416d1c9b0392eeb85de2fa7bc9fe4"
     },
     {
       "path": "malaysia_workforce/tests/test_wages.py",
