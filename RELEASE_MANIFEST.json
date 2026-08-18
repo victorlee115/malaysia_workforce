@@ -1,8 +1,8 @@
 {
   "app": "malaysia_workforce",
-  "version": "1.0.0-rc.12",
-  "generated_on": "2026-08-16",
-  "file_count": 140,
+  "version": "1.0.0-rc.13",
+  "generated_on": "2026-08-18",
+  "file_count": 142,
   "files": [
     {
       "path": ".editorconfig",
@@ -26,13 +26,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 7594,
-      "sha256": "e4a69e13e638d49f95bf935e2115d9027562730d446d9ff459d68c5dd9dcc076"
+      "size": 7610,
+      "sha256": "9d3c5c91fa9bac22ad61bc92959e7e8683cd862c3b88935afa06749d3c43b72e"
     },
     {
       "path": "README.md",
       "size": 3668,
-      "sha256": "54e4ead7be4fea1bc1a4d9455ea032cf195368cdd43939eaca2f646c96da3fe5"
+      "sha256": "5eea90661c9a2ed44a59a13cdca5b793c137b9b45c41b9cd1aede34a55563fe8"
     },
     {
       "path": "compatibility-lock.json",
@@ -76,8 +76,8 @@
     },
     {
       "path": "docs/RELEASE_VALIDATION.md",
-      "size": 4415,
-      "sha256": "28a122e481bd9d18a87f34c9b4d8b44185c78c775134af59ead1ad8703cd24bb"
+      "size": 4712,
+      "sha256": "64354a07911b729dd97449c2eda0937deb8c096f8ac880593c2d2ccaadb7f2c7"
     },
     {
       "path": "docs/SECURITY.md",
@@ -107,7 +107,7 @@
     {
       "path": "malaysia_workforce/__init__.py",
       "size": 26,
-      "sha256": "09b0ed8f33686a586fbdabf7e09df79116df8f23a2529ed97b0b2be5e78f4269"
+      "sha256": "1998b434ef7a4690da26b1feb553f84cbe264d4cb1704980fea91c4214caba68"
     },
     {
       "path": "malaysia_workforce/api/__init__.py",
@@ -445,6 +445,11 @@
       "sha256": "01f2f657f5493b112a9d4dc8a8bf1e4792277c2ead9613944a8be1fe290d9705"
     },
     {
+      "path": "malaysia_workforce/payroll/profile.py",
+      "size": 1691,
+      "sha256": "10da78ff24ff8c0f398309fa9cfc4e210f91761b2a9b0e93d6ca3909aa83c7aa"
+    },
+    {
       "path": "malaysia_workforce/payroll/salary_slip.py",
       "size": 21910,
       "sha256": "ca833c08990b564a5b29543dc2cd007aed2671f10c8015b42fe723b689b3ba73"
@@ -665,6 +670,11 @@
       "sha256": "9da0522db9dda22e8c044ee7d98aa10ec3acd0b98200453edf7bd3c3397f3f19"
     },
     {
+      "path": "malaysia_workforce/tests/test_statutory_profiles.py",
+      "size": 3066,
+      "sha256": "5af87a820ea27903bd40ffc48d4e829b823e8cc78d6b6f4339dac64e57b0c387"
+    },
+    {
       "path": "malaysia_workforce/tests/test_templates_and_json.py",
       "size": 10342,
       "sha256": "cf3898a823a275b015fc41952a606eeb7dd416d1c9b0392eeb85de2fa7bc9fe4"
@@ -682,7 +692,7 @@
     {
       "path": "package.json",
       "size": 299,
-      "sha256": "73724bb9805c3ff251aa0acf646f338ef25b115613b0a3d880aff9a71183e452"
+      "sha256": "95e80d9dc6817460d3ee54fbba0010c43245141854ab28e9cde45ee23762c862"
     },
     {
       "path": "pyproject.toml",

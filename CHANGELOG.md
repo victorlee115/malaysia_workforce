@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.0-rc.13 — 2026-08-18
 
 - Added the explicit `Statutory Profile` field on Employee. `SOCSO + EIS — LINDUNG Optional` keeps contractors in standard Frappe HR records while calculating only SOCSO, EIS and applicable LINDUNG.
 - Excluded that profile from EPF, LHDN and HRD Corp calculations and filings, blocked tax declarations and CP38, and added profile-aware payroll readiness and filing fingerprints.
