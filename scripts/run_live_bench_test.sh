@@ -103,6 +103,7 @@ step "Run pure/static app test suite using the Bench virtual environment"
 ./env/bin/python -m pytest -q apps/malaysia_workforce/malaysia_workforce/tests
 
 step "Run live Frappe payroll and permission scenarios"
+bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_statutory_profile
 bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_all
 bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_source_tamper
 bench --site "$SITE" execute malaysia_workforce.live_tests.scenarios.run_lindung_release

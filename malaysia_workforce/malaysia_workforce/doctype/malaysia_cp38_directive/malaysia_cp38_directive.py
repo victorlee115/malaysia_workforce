@@ -5,11 +5,17 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate
 
+from malaysia_workforce.payroll.validation import ensure_employee_tax_profile
+
 
 class MalaysiaCP38Directive(Document):
 	def validate(self):
-		if frappe.db.get_value("Employee", self.employee, "company") != self.company:
+		employee_company = frappe.db.get_value("Employee", self.employee, "company")
+		if not employee_company:
+			frappe.throw(_("Select a valid Employee."))
+		if employee_company != self.company:
 			frappe.throw(_("Company must match the Employee's Company."))
+		ensure_employee_tax_profile(self.employee)
 		if self.effective_to and getdate(self.effective_to) < getdate(self.effective_from):
 			frappe.throw(_("Effective To cannot be before Effective From."))
 		if Decimal(str(self.directive_amount or 0)) <= 0:

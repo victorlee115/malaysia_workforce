@@ -4,6 +4,11 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, nowdate
 
+from malaysia_workforce.payroll.validation import (
+	employee_uses_socso_eis_lindung_profile,
+	ensure_employee_tax_profile,
+)
+
 TAX_PRIVILEGED = {"System Manager", "HR Manager"}
 FILING_PRIVILEGED = {"System Manager", "HR Manager", "Accounts Manager"}
 READ_ONLY = {"Auditor"}
@@ -34,6 +39,7 @@ def employee_tax_defaults() -> dict:
 	employee = current_employee()
 	if not employee:
 		frappe.throw(_("Your User is not linked to an active Employee."), frappe.PermissionError)
+	ensure_employee_tax_profile(employee)
 	return {
 		"employee": employee,
 		"company": frappe.db.get_value("Employee", employee, "company"),
@@ -50,6 +56,7 @@ def send_tax_declaration_for_review(doctype: str, name: str) -> dict:
 	employee = current_employee()
 	if not employee:
 		frappe.throw(_("Your User is not linked to an active Employee."), frappe.PermissionError)
+	ensure_employee_tax_profile(employee)
 	doc = frappe.get_doc(doctype, name)
 	doc.check_permission("write")
 	if doc.employee != employee:
@@ -87,6 +94,8 @@ def employee_tax_query(doctype: str, user: str | None = None) -> str:
 	if _roles(user) & (TAX_PRIVILEGED | READ_ONLY):
 		return company_query(user, doctype)
 	employee = current_employee(user)
+	if employee and employee_uses_socso_eis_lindung_profile(employee):
+		return "1=0"
 	return f"`tab{doctype}`.`employee`={frappe.db.escape(employee)}" if employee else "1=0"
 
 
@@ -129,6 +138,8 @@ def employee_tax_permission(doc, user=None, permission_type=None, ptype=None):
 		)
 	if roles & TAX_PRIVILEGED:
 		return company_permission(doc, user, permission_type)
+	if employee_uses_socso_eis_lindung_profile(getattr(doc, "employee", None)):
+		return False
 	return getattr(doc, "employee", None) == current_employee(user)
 
 

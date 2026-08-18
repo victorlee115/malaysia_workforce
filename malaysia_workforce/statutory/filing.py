@@ -9,6 +9,13 @@ import frappe
 from frappe import _
 from frappe.utils import getdate
 
+from malaysia_workforce.payroll.profile import (
+	SOCSO_EIS_LINDUNG_PROFILE,
+	STANDARD_PAYROLL_PROFILE,
+	STATUTORY_PROFILE_FIELD,
+	normalize_statutory_profile,
+	scheme_applies,
+)
 from malaysia_workforce.statutory.exporters.epf_csv import EPFCSVRecord, generate_epf_csv
 from malaysia_workforce.statutory.exporters.lhdn_pcb import LHDNPCBRecord, generate_lhdn_pcb_file
 from malaysia_workforce.statutory.exporters.perkeso_combined import PERKESOCombinedRecord, generate_perkeso_combined_file
@@ -30,7 +37,15 @@ EMPLOYEE_SERIALIZER_FIELDS = (
 	"passport_number",
 	"custom_tax_identification_number",
 	"custom_epf_member_number",
+	STATUTORY_PROFILE_FIELD,
 )
+
+
+def _salary_slip_profile(value) -> str:
+	profile = normalize_statutory_profile(value)
+	if profile not in {STANDARD_PAYROLL_PROFILE, SOCSO_EIS_LINDUNG_PROFILE}:
+		frappe.throw(_("A submitted Salary Slip has an unsupported Statutory Profile."))
+	return profile
 
 
 def _result_rows(filing) -> list:
@@ -38,7 +53,7 @@ def _result_rows(filing) -> list:
 		"Salary Slip",
 		filters={"company": filing.company, "docstatus": 1,
 			"end_date": ["between", [filing.period_start, filing.period_end]]},
-		fields=["name", "employee", "employee_name"],
+		fields=["name", "employee", "employee_name", STATUTORY_PROFILE_FIELD],
 		order_by="employee, end_date, name",
 	)
 	if not slips:
@@ -47,11 +62,16 @@ def _result_rows(filing) -> list:
 	results = frappe.get_all(
 		"Malaysia Statutory Result", filters={"parent": ["in", list(parents)], "parenttype": "Salary Slip"},
 		fields=["parent", "scheme", "wage_base", "regular_wages", "additional_wages", "employee_amount",
-			"employer_amount", "extra_employee_amount", "rule_version"],
+			"employer_amount", "extra_employee_amount", "applicable", "rule_version"],
 		order_by="parent, scheme, name",
 	)
 	return [
-		{**dict(row), "employee": parents[row.parent].employee, "employee_name": parents[row.parent].employee_name}
+		{
+			**dict(row),
+			"employee": parents[row.parent].employee,
+			"employee_name": parents[row.parent].employee_name,
+			"profile": _salary_slip_profile(parents[row.parent].get(STATUTORY_PROFILE_FIELD)),
+		}
 		for row in results
 	]
 
@@ -83,6 +103,7 @@ def _source_payload(filing, company_identity: dict, items: list[dict]) -> dict:
 				"identity": {
 					key: str(item["identity"].get(key) or "") for key in EMPLOYEE_SERIALIZER_FIELDS
 				},
+				"profile": item["profile"],
 				"wages": _serializable_amount(item["wages"]),
 				"employee_amount": _serializable_amount(item["employee_amount"]),
 				"employer_amount": _serializable_amount(item["employer_amount"]),
@@ -99,12 +120,19 @@ def _source_payload(filing, company_identity: dict, items: list[dict]) -> dict:
 
 
 def _aggregate(filing) -> tuple[list[dict], str, dict]:
-	rows = [row for row in _result_rows(filing) if row["scheme"] in _schemes(filing)]
+	rows = [
+		row
+		for row in _result_rows(filing)
+		if row["scheme"] in _schemes(filing)
+		and row.get("applicable", 1)
+		and scheme_applies(row["profile"], row["scheme"])
+	]
 	if not rows:
-		frappe.throw(_("No {0} statutory results exist in this period.").format(filing.authority))
+		frappe.throw(_("No applicable {0} statutory results exist in this period.").format(filing.authority))
 	items: dict[str, dict] = {}
 	for row in rows:
 		item = items.setdefault(row["employee"], {"employee": row["employee"], "employee_name": row["employee_name"],
+			"profile": row.get("profile") or "Standard Payroll",
 			"wages": Decimal("0"), "employee_amount": Decimal("0"), "employer_amount": Decimal("0"),
 			"additional_amount": Decimal("0"), "versions": set(), "schemes": defaultdict(lambda: {"wages": Decimal("0"),
 				"employee": Decimal("0"), "employer": Decimal("0"), "extra": Decimal("0")})})

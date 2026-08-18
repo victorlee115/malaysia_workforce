@@ -29,6 +29,12 @@ def ensure_standard_record_permissions() -> None:
 	setup_custom_perms("Employee")
 	_ensure_permission("Employee", "HR Manager", permlevel=1, rights={"read": 1, "write": 1})
 	_ensure_permission("Employee", "Auditor", permlevel=1, rights={"read": 1, "export": 1})
+	setup_custom_perms("Salary Slip")
+	_ensure_permission("Salary Slip", "HR Manager", permlevel=1, rights={"read": 1})
+	_ensure_permission("Salary Slip", "Auditor", permlevel=1, rights={"read": 1})
+	_ensure_permission("Employee", "System Manager", rights={"read": 1, "select": 1, "report": 1})
+	_ensure_permission("Salary Slip", "System Manager", rights={"read": 1, "select": 1, "report": 1})
+	_ensure_permission("Payroll Entry", "System Manager", rights={"read": 1, "select": 1, "report": 1})
 
 	for doctype in AUDITOR_SOURCE_DOCTYPES:
 		if not frappe.db.exists("DocType", doctype):

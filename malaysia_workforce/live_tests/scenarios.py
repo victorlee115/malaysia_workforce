@@ -20,6 +20,9 @@ SYSTEM_MANAGER = "system.manager@example.com"
 PASSWORD = "Malaysia-Payroll-E2E-2026"
 PERIOD_START = date(2026, 7, 1)
 PERIOD_END = date(2026, 7, 31)
+JUNE_START = date(2026, 6, 1)
+JUNE_END = date(2026, 6, 30)
+CONTRACTOR_NUMBER = "MWL0000002"
 
 
 def runtime_info() -> dict:
@@ -401,6 +404,8 @@ def seed_browser_site(*, commit: bool = True) -> dict:
 	_user(SYSTEM_MANAGER, "Sam", ("System Manager", "Accounts Manager"))
 	for user in (HR_MANAGER, PAYROLL_OWNER, PAYROLL_RELEASER, AUDITOR):
 		_company_permission(user)
+	for user in (HR_MANAGER, PAYROLL_OWNER, PAYROLL_RELEASER, AUDITOR, SYSTEM_MANAGER):
+		frappe.defaults.set_user_default("Company", COMPANY, user)
 	employee = _employee()
 	_make_employee_self_service_user(EMPLOYEE_USER)
 	_contract(employee)
@@ -1076,6 +1081,377 @@ def seed_chrome_scenarios(*, commit: bool = True) -> dict:
 		"submitted_payroll_entry": release_entry.name,
 		"submitted_payroll_docstatus": release_entry.docstatus,
 		"draft_filing": filing_name,
+	}
+	if commit:
+		frappe.db.commit()
+	return result
+
+
+def _contractor_employee() -> str:
+	from malaysia_workforce.payroll.profile import SOCSO_EIS_LINDUNG_PROFILE
+
+	if not frappe.db.exists("Gender", "Male"):
+		frappe.get_doc({"doctype": "Gender", "gender": "Male"}).insert(ignore_permissions=True)
+	if not frappe.db.exists("Designation", "Contractor"):
+		frappe.get_doc({"doctype": "Designation", "designation_name": "Contractor"}).insert(ignore_permissions=True)
+	employee = frappe.db.get_value("Employee", {"employee_number": CONTRACTOR_NUMBER}, "name")
+	values = {
+		"first_name": "Hakim", "last_name": "Contractor", "employee_number": CONTRACTOR_NUMBER,
+		"company": COMPANY, "designation": "Contractor", "gender": "Male",
+		"date_of_birth": "1995-08-20", "date_of_joining": "2026-01-01",
+		"status": "Active", "bank_ac_no": "223456789012",
+		"custom_malaysia_citizenship_status": "Malaysian Citizen",
+		"custom_malaysia_statutory_profile": SOCSO_EIS_LINDUNG_PROFILE,
+		"custom_nric": "950820140002",
+		"custom_tax_identification_number": None,
+		"custom_epf_member_number": None,
+		"custom_socso_category": "First", "custom_eis_eligible": 1,
+		"custom_lindung_participation": "Participating",
+		"custom_lindung_registration_date": None,
+		"custom_lindung_effective_from": None,
+		"custom_lindung_evidence": None,
+		"custom_lindung_multiple_employers": 0,
+		"custom_pcb_resident": 0, "custom_pcb_category": None, "custom_pcb_child_units": 0,
+	}
+	if employee:
+		doc = frappe.get_doc("Employee", employee)
+		doc.update(values)
+		doc.save(ignore_permissions=True)
+	else:
+		doc = frappe.get_doc({"doctype": "Employee", **values}).insert(ignore_permissions=True)
+		employee = doc.name
+	return employee
+
+
+def _assign_structure(employee: str) -> None:
+	payable, _ = _accounts()
+	structure_name = "MW Lean Monthly Salary"
+	if not frappe.db.exists("Salary Structure Assignment", {
+		"employee": employee, "salary_structure": structure_name, "docstatus": 1,
+	}):
+		assignment = frappe.get_doc({
+			"doctype": "Salary Structure Assignment", "employee": employee,
+			"salary_structure": structure_name, "company": COMPANY, "from_date": "2026-01-01",
+			"base": 5000, "currency": "MYR", "payroll_payable_account": payable,
+		}).insert(ignore_permissions=True)
+		assignment.submit()
+
+
+def _statutory_dict(slip) -> dict:
+	return {
+		row.scheme: {
+			"employee": float(row.employee_amount or 0),
+			"employer": float(row.employer_amount or 0),
+			"extra": float(row.extra_employee_amount or 0),
+			"wages": float(row.wage_base or 0),
+			"applicable": int(row.applicable),
+		}
+		for row in slip.custom_malaysia_statutory_results
+	}
+
+
+def _clear_period_slips(employee: str, start, end) -> None:
+	frappe.set_user("Administrator")
+	for name in frappe.get_all(
+		"Salary Slip",
+		filters={"employee": employee, "company": COMPANY,
+			"start_date": [">=", start], "end_date": ["<=", end]},
+		pluck="name",
+	):
+		doc = frappe.get_doc("Salary Slip", name)
+		if doc.docstatus == 1:
+			doc.cancel()
+		doc.delete()
+	frappe.db.commit()
+
+
+def _mixed_payroll_entry(employees: list[str], start, end):
+	name = frappe.db.get_value("Payroll Entry", {
+		"company": COMPANY, "start_date": start, "end_date": end, "docstatus": 0,
+	}, "name")
+	if name:
+		return frappe.get_doc("Payroll Entry", name)
+	payable, _ = _accounts()
+	frappe.set_user(PAYROLL_OWNER)
+	entry = frappe.get_doc({
+		"doctype": "Payroll Entry", "company": COMPANY, "posting_date": end,
+		"payroll_frequency": "Monthly", "start_date": start, "end_date": end,
+		"currency": "MYR", "exchange_rate": 1, "payroll_payable_account": payable,
+		"cost_center": frappe.db.get_value("Cost Center", {"company": COMPANY, "is_group": 0}, "name"),
+	}).insert()
+	entry.fill_employee_details()
+	wanted = set(employees)
+	entry.employees = [row for row in entry.employees if row.employee in wanted]
+	if {row.employee for row in entry.employees} != wanted:
+		frappe.throw(f"Mixed Payroll Entry is missing employees: {wanted - {row.employee for row in entry.employees}}.")
+	entry.save()
+	return entry
+
+
+def _june_filing(authority: str):
+	frappe.set_user(PAYROLL_RELEASER)
+	name = frappe.db.get_value("Malaysia Statutory Filing", {
+		"company": COMPANY, "authority": authority,
+		"period_start": JUNE_START, "period_end": JUNE_END, "docstatus": ["<", 2],
+	}, "name")
+	if name:
+		doc = frappe.get_doc("Malaysia Statutory Filing", name)
+	else:
+		doc = frappe.get_doc({
+			"doctype": "Malaysia Statutory Filing", "company": COMPANY, "authority": authority,
+			"period_start": JUNE_START, "period_end": JUNE_END,
+		}).insert()
+	if doc.docstatus == 0:
+		doc.prepare()
+		doc.reload()
+	return doc
+
+
+def _expect_blocked(action, *, message: str):
+	try:
+		action()
+	except frappe.ValidationError:
+		frappe.clear_last_message()
+		return True
+	frappe.throw(message)
+
+
+def run_statutory_profile(*, commit: bool = True) -> dict:
+	"""Exercise the SOCSO + EIS — LINDUNG Optional profile end to end in June 2026."""
+	from frappe.utils import flt, getdate
+
+	from malaysia_workforce.malaysia_workforce.report.malaysia_annual_remuneration.malaysia_annual_remuneration import execute as annual_report
+	from malaysia_workforce.malaysia_workforce.report.malaysia_payroll_readiness.malaysia_payroll_readiness import execute as readiness_report
+	from malaysia_workforce.payroll.events import check_readiness, employee_readiness
+	from malaysia_workforce.payroll.profile import SOCSO_EIS_LINDUNG_PROFILE, STATUTORY_PROFILE_FIELD
+	from malaysia_workforce.statutory.calculators.eis import calculate_eis
+	from malaysia_workforce.statutory.calculators.socso import calculate_socso
+	from malaysia_workforce.statutory.filing import validate_filing_source
+
+	seed = seed_browser_site(commit=True)
+	aina = seed["employee"]
+	_payroll_setup(aina)
+	contractor = _contractor_employee()
+	_contract(contractor)
+	_assign_structure(contractor)
+	frappe.set_user("Administrator")
+
+	issues = employee_readiness(contractor, COMPANY, JUNE_END)
+	if issues:
+		frappe.throw(f"Contractor readiness should pass without TIN, EPF or PCB category: {issues}")
+
+	original_eis = frappe.db.get_value("Employee", contractor, "custom_eis_eligible")
+	frappe.db.set_value("Employee", contractor, "custom_eis_eligible", 0, update_modified=False)
+	eis_issues = " ".join(employee_readiness(contractor, COMPANY, JUNE_END))
+	frappe.db.set_value("Employee", contractor, "custom_eis_eligible", original_eis, update_modified=False)
+	if "EIS Eligible" not in eis_issues:
+		frappe.throw(f"Disabled EIS did not fail contractor readiness: {eis_issues}")
+
+	original_socso = frappe.db.get_value("Employee", contractor, "custom_socso_category")
+	frappe.db.set_value("Employee", contractor, "custom_socso_category", None, update_modified=False)
+	socso_issues = " ".join(employee_readiness(contractor, COMPANY, JUNE_END))
+	frappe.db.set_value("Employee", contractor, "custom_socso_category", original_socso, update_modified=False)
+	if "SOCSO Category" not in socso_issues:
+		frappe.throw(f"Missing SOCSO category did not fail contractor readiness: {socso_issues}")
+
+	component_name = "MW Contractor Unclassified Earning"
+	structure_name = "MW Contractor Unclassified Structure"
+	created_component = not frappe.db.exists("Salary Component", component_name)
+	payable, expense = _accounts()
+	if created_component:
+		frappe.get_doc({
+			"doctype": "Salary Component", "salary_component": component_name,
+			"salary_component_abbr": "MWCU", "type": "Earning",
+			"accounts": [{"company": COMPANY, "account": expense}],
+		}).insert(ignore_permissions=True)
+	if not frappe.db.exists("Salary Structure", structure_name):
+		structure = frappe.get_doc({
+			"doctype": "Salary Structure", "name": structure_name, "company": COMPANY,
+			"is_active": "Yes", "payroll_frequency": "Monthly", "currency": "MYR",
+			"earnings": [{"salary_component": component_name, "amount": 5000}],
+		}).insert(ignore_permissions=True)
+		structure.submit()
+	bad_assignment = frappe.get_doc({
+		"doctype": "Salary Structure Assignment", "employee": contractor,
+		"salary_structure": structure_name, "company": COMPANY, "from_date": "2026-06-01",
+		"base": 5000, "currency": "MYR", "payroll_payable_account": payable,
+	}).insert(ignore_permissions=True)
+	bad_assignment.submit()
+	wage_issues = " ".join(employee_readiness(contractor, COMPANY, JUNE_END))
+	bad_assignment.cancel()
+	bad_assignment.delete()
+	if "SOCSO wages" not in wage_issues or "EIS wages" not in wage_issues:
+		frappe.throw(f"Unclassified contractor earnings did not fail readiness: {wage_issues}")
+
+	_clear_period_slips(aina, JUNE_START, JUNE_END)
+	_clear_period_slips(contractor, JUNE_START, JUNE_END)
+	aina_baseline = _statutory_dict(_submit_standalone_slip(aina, JUNE_START, JUNE_END))
+	_clear_period_slips(aina, JUNE_START, JUNE_END)
+
+	entry = _mixed_payroll_entry([aina, contractor], JUNE_START, JUNE_END)
+	readiness = check_readiness(entry.name)
+	frappe.db.commit()
+	if entry.docstatus == 0:
+		entry.submit()
+	entry.reload()
+	if frappe.db.exists("Salary Slip", {"payroll_entry": entry.name, "docstatus": 0}):
+		entry.submit_salary_slips()
+	entry.reload()
+	slips = frappe.get_all(
+		"Salary Slip",
+		filters={"payroll_entry": entry.name, "docstatus": 1},
+		fields=["name", "employee"],
+	)
+	if {row.employee for row in slips} != {aina, contractor} or len(slips) != 2:
+		frappe.throw(f"Expected mixed June slips for Aina and the contractor, found {slips}.")
+	by_employee = {row.employee: frappe.get_doc("Salary Slip", row.name) for row in slips}
+	aina_slip = by_employee[aina]
+	contractor_slip = by_employee[contractor]
+	if _statutory_dict(aina_slip) != aina_baseline:
+		frappe.throw("Aina's mixed-Payroll-Entry totals drifted from the solo June snapshot.")
+
+	contractor_rows = _statutory_dict(contractor_slip)
+	expected_socso = calculate_socso(
+		5000, "First", contribution_date=getdate(JUNE_END), lindung_participation="Participating",
+	)
+	expected_eis = calculate_eis(5000)
+	if abs(flt(contractor_rows["SOCSO"]["employee"]) - float(expected_socso.employee)) > 0.005:
+		frappe.throw(f"Contractor SOCSO employee amount mismatch: {contractor_rows['SOCSO']}.")
+	if abs(flt(contractor_rows["SOCSO"]["extra"]) - float(expected_socso.extra_employee)) > 0.005:
+		frappe.throw(f"Contractor SKBBK amount mismatch: {contractor_rows['SOCSO']}.")
+	if abs(flt(contractor_rows["EIS"]["employee"]) - float(expected_eis.employee)) > 0.005:
+		frappe.throw(f"Contractor EIS amount mismatch: {contractor_rows['EIS']}.")
+	if not contractor_rows["SOCSO"]["applicable"] or not contractor_rows["EIS"]["applicable"]:
+		frappe.throw(f"Contractor SOCSO/EIS must be applicable: {contractor_rows}.")
+	for scheme in ("EPF", "HRD Corp", "PCB", "CP38", "Zakat"):
+		row = contractor_rows[scheme]
+		if row["applicable"] or any(row[key] for key in ("employee", "employer", "extra")):
+			frappe.throw(f"Contractor {scheme} must be inapplicable with zero amounts: {row}.")
+	deduction_names = {row.salary_component for row in contractor_slip.deductions}
+	for component in ("PCB", "CP38", "Zakat", "EPF Employee"):
+		if component in deduction_names:
+			frappe.throw(f"Contractor slip still has {component} deduction.")
+
+	perkeso = _june_filing("PERKESO")
+	epf = _june_filing("EPF")
+	lhdn = _june_filing("LHDN")
+	perkeso_employees = {row.employee for row in perkeso.employee_lines}
+	if contractor not in perkeso_employees or aina not in perkeso_employees:
+		frappe.throw(f"June PERKESO must include both employees: {perkeso_employees}.")
+	contractor_line = next(row for row in perkeso.employee_lines if row.employee == contractor)
+	if not flt(contractor_line.employee_amount) or not flt(contractor_line.additional_amount):
+		frappe.throw(f"June PERKESO contractor line is missing SOCSO/EIS/SKBBK: {contractor_line.as_dict()}.")
+	if contractor in {row.employee for row in epf.employee_lines}:
+		frappe.throw("June EPF filing included the contractor.")
+	if contractor in {row.employee for row in lhdn.employee_lines}:
+		frappe.throw("June LHDN filing included the contractor.")
+
+	frappe.set_user(HR_MANAGER)
+	_expect_blocked(
+		lambda: frappe.get_doc({
+			"doctype": "Malaysia Tax Declaration TP1", "employee": contractor, "company": COMPANY,
+			"tax_year": 2026, "declaration_date": "2026-06-01", "employee_declaration": 1,
+		}).insert(),
+		message="TP1 was allowed for the contractor profile.",
+	)
+	_expect_blocked(
+		lambda: frappe.get_doc({
+			"doctype": "Malaysia Previous Employment TP3", "employee": contractor, "company": COMPANY,
+			"tax_year": 2026, "previous_employer_name": "Prior Contractor Sdn Bhd",
+			"employee_declaration": 1,
+		}).insert(),
+		message="TP3 was allowed for the contractor profile.",
+	)
+	_expect_blocked(
+		lambda: frappe.get_doc({
+			"doctype": "Malaysia CP38 Directive", "employee": contractor, "company": COMPANY,
+			"directive_reference": "CP38-CONTRACTOR-BLOCK", "effective_from": "2026-06-01",
+			"directive_amount": 100, "monthly_deduction": 50,
+			"evidence": _private_file("mw-contractor-cp38.txt", "Should not be accepted"),
+		}).insert(),
+		message="A CP38 directive was allowed for the contractor profile.",
+	)
+
+	frappe.set_user(HR_MANAGER)
+	visible = frappe.get_doc("Salary Slip", contractor_slip.name)
+	if visible.get(STATUTORY_PROFILE_FIELD) != SOCSO_EIS_LINDUNG_PROFILE:
+		frappe.throw("HR Manager cannot read the Salary Slip Statutory Profile snapshot.")
+
+	for user in (HR_MANAGER, PAYROLL_RELEASER):
+		frappe.set_user(user)
+		_, default_rows = annual_report({"company": COMPANY, "year": 2026})
+		_, all_rows = annual_report({"company": COMPANY, "year": 2026, "show_all_profiles": 1})
+		default_employees = {row["employee"] for row in default_rows}
+		all_employees = {row["employee"] for row in all_rows}
+		if contractor in default_employees:
+			frappe.throw(f"{user} saw the contractor on the default annual report.")
+		if contractor not in all_employees:
+			frappe.throw(f"{user} did not see the contractor when Show All Statutory Profiles was ticked.")
+
+	# Administrator can list Employee but has no permlevel-1 grant; get_all must
+	# still return the real snapshot. System Manager is on the report's role
+	# list but ERPNext's Employee DocType has no System Manager permission row.
+	frappe.set_user("Administrator")
+	_, ready_rows = readiness_report({"company": COMPANY, "payroll_date": JUNE_END, "show_ready": 1})
+	contractor_ready = next((row for row in ready_rows if row.get("employee") == contractor), None)
+	if not contractor_ready or contractor_ready.get("profile") != SOCSO_EIS_LINDUNG_PROFILE:
+		frappe.throw(f"Readiness hid the contractor profile: {contractor_ready}.")
+
+	frappe.set_user("Administrator")
+	original_profile = frappe.db.get_value("Employee", contractor, STATUTORY_PROFILE_FIELD)
+	submitted_snapshot = contractor_slip.get(STATUTORY_PROFILE_FIELD)
+	draft = _mixed_payroll_entry([contractor], date(2026, 5, 1), date(2026, 5, 31))
+	draft_slip = None
+	if draft.docstatus == 0:
+		draft_slip = frappe.get_doc({
+			"doctype": "Salary Slip", "employee": contractor, "company": COMPANY,
+			"payroll_frequency": "Monthly", "start_date": "2026-05-01", "end_date": "2026-05-31",
+			"posting_date": "2026-05-31", "payroll_entry": draft.name,
+		}).insert(ignore_permissions=True)
+	frappe.db.set_value(
+		"Employee", contractor, STATUTORY_PROFILE_FIELD, "Standard Payroll", update_modified=False,
+	)
+	contractor_slip.reload()
+	if contractor_slip.get(STATUTORY_PROFILE_FIELD) != submitted_snapshot:
+		frappe.throw("Changing the Employee profile recalculated a submitted Salary Slip.")
+	_expect_blocked(
+		lambda: validate_filing_source(perkeso),
+		message="validate_filing_source did not notice the Employee profile change.",
+	)
+	if draft.docstatus == 0:
+		_expect_blocked(
+			draft.submit,
+			message="Payroll Entry submit accepted a stale Statutory Profile snapshot.",
+		)
+	if draft_slip:
+		_expect_blocked(
+			draft_slip.submit,
+			message="Direct Salary Slip submit accepted a stale Statutory Profile snapshot.",
+		)
+		draft_slip.reload()
+		if draft_slip.docstatus != 0:
+			frappe.throw("The stale draft Salary Slip was submitted.")
+		draft_slip.delete(ignore_permissions=True)
+	if draft.docstatus == 0:
+		draft.delete(ignore_permissions=True)
+	frappe.db.set_value(
+		"Employee", contractor, STATUTORY_PROFILE_FIELD, original_profile, update_modified=False,
+	)
+
+	frappe.set_user("Administrator")
+	result = {
+		"seed": seed,
+		"contractor": contractor,
+		"payroll_entry": entry.name,
+		"readiness": readiness["status"],
+		"aina_slip": aina_slip.name,
+		"contractor_slip": contractor_slip.name,
+		"contractor_statutory": contractor_rows,
+		"filings": {
+			"perkeso": perkeso.name,
+			"epf_excludes_contractor": contractor not in {row.employee for row in epf.employee_lines},
+			"lhdn_excludes_contractor": contractor not in {row.employee for row in lhdn.employee_lines},
+		},
 	}
 	if commit:
 		frappe.db.commit()

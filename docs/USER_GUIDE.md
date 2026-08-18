@@ -97,6 +97,92 @@ These are operational explanations, not legal definitions. Use the official sour
 
 The app calculates reviewed rules and prepares files. It does not decide whether an employee has made a truthful declaration, whether an unusual payment is legally classified correctly, whether a government portal accepted a file, or whether money left the bank. Keep one accountable human for approvals and periodic professional review.
 
+## 0. Beginner quick start: one complete, safe payroll
+
+If you have never used HR software, follow this order. Do not jump straight to payroll: each step creates information that the next step needs.
+
+| Step | Who does it | Where to go | What to do | What success looks like |
+| --- | --- | --- | --- | --- |
+| 1 | System Manager | **Company** | Create the company, currency, country and accounting settings | The company can be selected on an Employee and Payroll Entry |
+| 2 | System Manager / HR Manager | **Employee** | Create the employee, User login, job details and Malaysian statutory details | The employee is active and has no red setup warnings |
+| 3 | HR Manager | **Contract**, **Salary Structure**, **Salary Structure Assignment** | Record the employee's terms and recurring pay | The assignment has a start date and all required components |
+| 4 | Employee | HRMS home / mobile browser | Sign in, check personal details and submit availability or leave when required | The manager can see the request in Desk |
+| 5 | Manager / attendance approver | **Shift Assignment**, **Employee Checkin**, **Attendance** | Publish shifts and approve attendance corrections | Attendance is submitted for the pay period |
+| 6 | Payroll Processor | **Malaysia Payroll Readiness**, then **Payroll Entry** | Resolve every red readiness item, calculate Salary Slips and review totals | Every employee has one Salary Slip with the expected net pay |
+| 7 | HR Manager / authorised releaser | **Payroll Entry** | Approve and release payroll after the maker's review | Release evidence is recorded and payroll is not silently changed afterwards |
+| 8 | Accounts / payroll processor | **Malaysia Statutory Filing** | Prepare authority files, reconcile totals and attach upload evidence | Each file has a known status and a responsible person |
+| 9 | Employee | HRMS home / **Salary Slip** | Download the payslip | The employee sees gross pay, deductions, statutory amounts and net pay |
+
+For practice, do this on a staging site with one test employee and a small test amount. Never upload a staging file to a live bank or government portal.
+
+### 0.1 The three screens you will use most
+
+1. **Desk** is the back office. Use the search box at the top to find a DocType such as `Employee`, `Payroll Entry`, `Salary Slip` or `Malaysia Statutory Filing`.
+2. **HRMS home / PWA** is the employee view. Employees use it for their profile, leave, attendance, claims and payslips; they should not need Desk.
+3. **The list view** shows many records. Click a record to open it, make a change, and use **Save**. A submitted document is normally locked; use the documented correction process instead of editing the database.
+
+### 0.2 First login: check these things before real data
+
+1. Open the site and sign in with the account created for your role.
+2. Look at the top-right user menu and confirm the correct user name.
+3. Use the search box to open **Company**. If there is no company, stop and ask the System Manager to complete setup.
+4. Check that the site uses `Asia/Kuala_Lumpur` time and the correct currency.
+5. Open **Employee** and confirm that you can see only the employees your role is allowed to see. If you can see another company's employees, stop and report it.
+6. Keep the **Payroll Processor**, **HR Manager**, **Accounts** and **Employee** accounts separate. Never test employee self-service while logged in as an administrator.
+
+### 0.3 Create one practice employee
+
+Use a realistic test identity, not a real employee's NRIC or bank account.
+
+1. Open **Employee** and select **New**.
+2. Enter the employee name, date of joining, company, department, branch, designation and employment type.
+3. Save the Employee. Create or link the User account only after the Employee record exists.
+4. Open the Malaysian/statutory section and complete the required EPF, SOCSO/PERKESO, EIS, PCB and tax identifiers. Do not leave a field blank merely to make a warning disappear.
+5. If the employee is subject to LINDUNG or another optional scheme, select it only when eligibility evidence is available.
+6. Save and run **Malaysia Payroll Readiness** for the employee. A red item means “stop”; it is not an informational suggestion.
+
+### 0.4 Give the employee a pay arrangement
+
+1. Open **Contract** and create the employee's approved terms. Use the effective date on which the terms actually start.
+2. Open **Salary Structure** and select the approved earning and deduction components. Use each component's Malaysian statutory treatment; never guess treatment from its name.
+3. Open **Salary Structure Assignment**, select the employee, company, salary structure, base amount and start date, then save and submit it.
+4. Use **Additional Salary** for a one-off approved item such as a bonus or allowance. Do not edit a submitted Salary Slip to add it.
+5. Re-run **Malaysia Payroll Readiness**. Continue only when the employee is eligible and component classification is complete.
+
+### 0.5 Run the first practice payroll
+
+1. Confirm attendance, approved leave and any approved overtime for the period.
+2. Open **Malaysia Payroll Readiness** for the company and pay period. Fix every red item; record an exception for anything that genuinely needs a human decision.
+3. Open **Payroll Entry** and select the company, payroll frequency, start date and end date.
+4. Use **Get Employees**. Check the employee list and investigate why an expected employee is missing; do not create a duplicate employee.
+5. Use the readiness/validation action supplied on the form. Do not continue if the period, statutory profile, salary structure or account mapping is incomplete.
+6. Create the Salary Slips. Open each **Salary Slip** and check the employee, period, payment days, earnings, deductions, employer contributions and net pay.
+7. Compare Payroll Entry totals with the expected practice amounts. A difference is a reason to stop, not a rounding detail to ignore.
+8. Have a second authorised person review the entry. The person who prepared it must not be the final releaser.
+9. Submit and release only after the review is complete. Record the release evidence required by your company procedure.
+10. Open **Malaysia Statutory Filing**, select the period and authority, prepare the file, and compare its totals with the Salary Slips. Keep the generated file and upload/acceptance evidence together.
+11. Do not claim that a government or bank submission succeeded until the authorised person has uploaded it and recorded the receipt or confirmation number.
+
+### 0.6 The employee's first self-service visit
+
+Give the employee the site address and their own login. Tell them to:
+
+1. Open HRMS home on a phone or computer and sign in.
+2. Open **My Profile** and check their name, email, phone, bank details and emergency contact. Ask HR to correct anything wrong; do not create a second Employee record.
+3. Open **Leave** to see balances and submit a Leave Application when needed.
+4. Open **Attendance** to review check-ins and use the supplied correction request if a punch is missing.
+5. Open **Salary Slips** after payroll is released and download the payslip.
+6. Use the Malaysia tax forms only when HR has asked for them. Upload evidence with the request; never email an NRIC or tax document to an unverified address.
+
+### 0.7 Stop signs for beginners
+
+- **Red validation message:** stop and fix the named record.
+- **Missing employee:** check company, employment dates, salary assignment and payroll filters; do not create a duplicate employee.
+- **Unexpected net pay:** open the Salary Slip and compare payment days, attendance, components and statutory deductions; ask the Payroll Processor before releasing.
+- **A button is missing:** your role probably does not have that permission. Do not use another person's login.
+- **A document is submitted:** do not edit it directly. Use the correction, amendment or reversal process described later in this guide.
+- **A file is “prepared” but not “submitted”:** it is still your team's responsibility to upload it and record the official confirmation.
+
 ## Your first implementation week
 
 Do not begin with a live payroll. Use this order:
@@ -267,7 +353,7 @@ Open the standard Company and its **Statutory Payroll** tab.
 7. Select the real HRD Corp registration class.
 8. When registered, enter its registration number and effective date.
 
-Company setup belongs to System Manager. HR Manager does not need broad Company or Sales Invoice permission merely to run payroll.
+Company setup belongs to System Manager. They can open **Malaysia Payroll Readiness** and **Malaysia Annual Remuneration** for implementation checks; day-to-day use stays with HR Manager, Accounts Manager and Auditor. HR Manager does not need broad Company or Sales Invoice permission merely to run payroll.
 
 #### How to choose HRD Corp Registration
 
@@ -414,11 +500,28 @@ Open **Statutory Details** and enter:
 
 - Citizenship Status;
 - NRIC;
-- Tax Identification Number;
-- EPF Member Number;
 - SOCSO Category;
 - EIS eligibility;
+
+For the `Standard Payroll` profile, also enter:
+
+- Tax Identification Number;
+- EPF Member Number;
 - PCB resident status, category, child units and disability flags.
+
+#### Contractor profile: SOCSO + EIS — LINDUNG Optional
+
+If you want to manage a contractor in the same Employee, Contract and Salary Slip screens but only calculate SOCSO, EIS and optional LINDUNG:
+
+1. Leave the person as a normal Frappe **Employee** and set **Employment Type** to `Contractor` if that label is useful to you. Employment Type does not control statutory calculations.
+2. Set **Statutory Profile** to `SOCSO + EIS — LINDUNG Optional`. Do not rely on Employment Type alone.
+3. Complete **NRIC**, **SOCSO Category** and **EIS Eligible**. EIS must be enabled for this profile.
+4. Leave the TIN, EPF member number, PCB category, TP1, TP3 and CP38 information blank. Those tax fields are hidden for this profile and the tax forms are unavailable.
+5. Keep or change **LINDUNG 24 Jam Participation** using the same evidence rules below. `Participating` includes the SKBBK/LINDUNG amount; `Not Participating` requires the employee's own valid release notice.
+6. Create the normal active **Contract**, **Salary Structure** and **Salary Structure Assignment**. At least one earning component must be included in both SOCSO and EIS wages.
+7. Run **Malaysia Payroll Readiness**. The report shows the profile so you can tell which missing fields are expected. A contractor can be in the same Payroll Entry as standard employees.
+
+The resulting Salary Slip contains gross pay, SOCSO, EIS and LINDUNG when applicable. It does not calculate EPF, PCB, CP38, Zakat or HRD Corp for this profile. The contractor is included in the combined PERKESO handoff and excluded from EPF, LHDN and HRD Corp handoffs. Malaysia Annual Remuneration hides this profile unless you tick **Show All Statutory Profiles**.
 
 LINDUNG 24 Jam has applied since 1 June 2026 and stays on by default. Leave **Participation** on `Participating` unless the employee has personally filed a Liability Release Notice (*Notis/Perakuan Pelepasan Liabiliti*) on the LINDUNG Faedah portal. The employer may not file it on the employee's behalf, but must stop deducting once notified. Only then set:
 
@@ -444,9 +547,10 @@ Check all of these:
 
 - the User ID belongs to this employee and no one else;
 - Company, date of birth, joining date and Holiday List are correct;
-- citizenship, NRIC, TIN and EPF member number match evidence;
+- citizenship and NRIC match evidence;
+- for `Standard Payroll`, TIN, EPF member number and PCB residence/category, spouse and child information match the supported declaration;
+- for `SOCSO + EIS — LINDUNG Optional`, EIS is enabled and the SOCSO/EIS wage components are classified;
 - SOCSO category and EIS eligibility were reviewed, not assumed;
-- PCB residence/category, spouse and child information reflect the supported declaration;
 - bank information follows your separate verification procedure;
 - any LINDUNG exception has the employee's own notice and valid dates.
 
@@ -541,7 +645,7 @@ If Salary shows no payslips, HR should verify that the User is linked to the cor
 1. Open the HRMS link supplied by the Company.
 2. Sign in with your own email and password.
 3. Open **Profile** and check that the name and employee details are yours.
-4. Open **Salary**. It is normal to see no Salary Slips before the first completed payroll.
+4. Open **View Salary Slips** from HRMS home. Use that tile rather than typing `/hrms/home/salary`, which can render a blank Frappe HR page. It is normal to see no Salary Slips before the first completed payroll.
 5. Open **Leaves**, **Attendance** and **Expenses** so you know where future requests are made.
 6. Sign out, then sign in again to confirm the password works.
 
@@ -917,7 +1021,7 @@ Use before Payroll Entry. It reports missing Company or employee setup. It is no
 
 ### Malaysia Annual Remuneration
 
-Select only a Company you are authorised to read and the required year. The report totals submitted Salary Slips by employee for gross pay, net pay, EPF, SOCSO, EIS, PCB, CP38 and Zakat. Use it for internal reconciliation and annual preparation; it is not itself an EA form or an authority submission.
+Select only a Company you are authorised to read and the required year. The report totals submitted Salary Slips by employee for gross pay, net pay, EPF, SOCSO, EIS, PCB, CP38 and Zakat. Employees on `SOCSO + EIS — LINDUNG Optional` are omitted unless you tick **Show All Statutory Profiles**. Use it for internal reconciliation and annual preparation; it is not itself an EA form or an authority submission.
 
 Export payroll reports only when necessary. Store exported files securely because they contain employee pay and identity-related data.
 

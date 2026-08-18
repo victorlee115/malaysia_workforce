@@ -402,7 +402,7 @@ SALARY_SLIP_HTML = r"""
                         <th class="scheme">{{ _("Scheme") }}</th>
                         <th class="base">{{ _("Wage Base") }}</th>
                         <th class="amount">{{ _("Employee") }}</th>
-                        <th class="amount">{{ _("Additional Employee") }}</th>
+                        <th class="amount">{{ _("Additional / LINDUNG") }}</th>
                         <th class="amount">{{ _("Employer") }}</th>
                     </tr>
                 </thead>
@@ -413,7 +413,7 @@ SALARY_SLIP_HTML = r"""
                                 <td>{{ row.scheme }}</td>
                                 <td class="base">{{ row.get_formatted("wage_base", doc) }}</td>
                                 <td class="amount">{{ row.get_formatted("employee_amount", doc) }}</td>
-                                <td class="amount">{% if row.extra_employee_amount %}{{ row.get_formatted("extra_employee_amount", doc) }}{% else %}—{% endif %}</td>
+                                <td class="amount">{% if row.extra_employee_amount %}{{ row.get_formatted("extra_employee_amount", doc) }}<div class="muted">{{ _("LINDUNG 24 Jam") }}</div>{% else %}—{% endif %}</td>
                                 <td class="amount">{{ row.get_formatted("employer_amount", doc) }}</td>
                             </tr>
                         {% endif %}

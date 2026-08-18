@@ -11,6 +11,7 @@ from malaysia_workforce.payroll.tax_validation import (
 	validate_tax_year,
 	validate_tp1_rows,
 )
+from malaysia_workforce.payroll.validation import ensure_employee_tax_profile
 from malaysia_workforce.permissions import current_employee, is_tax_privileged
 from malaysia_workforce.utils import ensure_roles
 
@@ -35,6 +36,7 @@ class MalaysiaTaxDeclarationTP1(Document):
 			frappe.throw(_("Select a valid Employee."))
 		if self.company != employee_company:
 			frappe.throw(_("The declaration Company must match the Employee's Company."))
+		ensure_employee_tax_profile(self.employee)
 		try:
 			self.tax_year = validate_tax_year(self.tax_year, getdate().year)
 			current_rows = [row.as_dict() for row in self.relief_claims]

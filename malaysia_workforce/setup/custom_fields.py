@@ -3,6 +3,13 @@ from __future__ import annotations
 import frappe
 
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields as _create_custom_fields
+from malaysia_workforce.payroll.profile import STANDARD_PAYROLL_PROFILE, STATUTORY_PROFILE_OPTIONS
+
+
+STANDARD_PROFILE_DEPENDS_ON = (
+	"eval:!doc.custom_malaysia_statutory_profile "
+	f"|| doc.custom_malaysia_statutory_profile=='{STANDARD_PAYROLL_PROFILE}'"
+)
 
 
 LEGACY_CUSTOM_FIELDS = {
@@ -87,9 +94,10 @@ def create_custom_fields(only_doctypes: set[str] | None = None):
 		"Employee": [
 			{"fieldname": "custom_malaysia_payroll_tab", "label": "Statutory Details", "fieldtype": "Tab Break", "insert_after": "personal_details", "permlevel": 1},
 			{"fieldname": "custom_malaysia_citizenship_status", "label": "Citizenship Status", "fieldtype": "Select", "options": "\nMalaysian Citizen\nPermanent Resident", "insert_after": "custom_malaysia_payroll_tab", "permlevel": 1},
-			{"fieldname": "custom_nric", "label": "NRIC", "fieldtype": "Data", "insert_after": "custom_malaysia_citizenship_status", "permlevel": 1},
-			{"fieldname": "custom_tax_identification_number", "label": "Tax Identification Number", "fieldtype": "Data", "insert_after": "custom_nric", "permlevel": 1},
-			{"fieldname": "custom_epf_member_number", "label": "EPF Member Number", "fieldtype": "Data", "insert_after": "custom_tax_identification_number", "permlevel": 1},
+			{"fieldname": "custom_malaysia_statutory_profile", "label": "Statutory Profile", "fieldtype": "Select", "options": STATUTORY_PROFILE_OPTIONS, "default": STANDARD_PAYROLL_PROFILE, "insert_after": "custom_malaysia_citizenship_status", "permlevel": 1, "description": "Choose Standard Payroll for ordinary employees. Choose SOCSO + EIS — LINDUNG Optional when only these contributions are handled in payroll."},
+			{"fieldname": "custom_nric", "label": "NRIC", "fieldtype": "Data", "insert_after": "custom_malaysia_statutory_profile", "permlevel": 1},
+			{"fieldname": "custom_tax_identification_number", "label": "Tax Identification Number", "fieldtype": "Data", "insert_after": "custom_nric", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
+			{"fieldname": "custom_epf_member_number", "label": "EPF Member Number", "fieldtype": "Data", "insert_after": "custom_tax_identification_number", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
 			{"fieldname": "custom_socso_category", "label": "SOCSO Category", "fieldtype": "Select", "options": "First\nSecond", "default": "First", "insert_after": "custom_epf_member_number", "permlevel": 1},
 			{"fieldname": "custom_eis_eligible", "label": "EIS Eligible", "fieldtype": "Check", "default": "1", "insert_after": "custom_socso_category", "permlevel": 1},
 			{"fieldname": "custom_lindung_participation", "label": "LINDUNG 24 Jam Participation", "fieldtype": "Select", "options": "Participating\nNot Participating", "default": "Participating", "insert_after": "custom_eis_eligible", "permlevel": 1, "description": "Participation is the statutory default from 1 June 2026. Select Not Participating only after the employee has personally filed a PERKESO Liability Release Notice."},
@@ -97,11 +105,11 @@ def create_custom_fields(only_doctypes: set[str] | None = None):
 			{"fieldname": "custom_lindung_effective_from", "label": "Liability Release Effective From", "fieldtype": "Date", "insert_after": "custom_lindung_registration_date", "depends_on": "eval:doc.custom_lindung_participation=='Not Participating'", "mandatory_depends_on": "eval:doc.custom_lindung_participation=='Not Participating'", "permlevel": 1, "description": "Date the employee's PERKESO Liability Release Notice takes effect. Contributions continue for every month ending before this date."},
 			{"fieldname": "custom_lindung_evidence", "label": "Liability Release Notice", "fieldtype": "Attach", "insert_after": "custom_lindung_effective_from", "depends_on": "eval:doc.custom_lindung_participation=='Not Participating'", "permlevel": 1, "description": "The employee's own Notis/Perakuan Pelepasan Liabiliti from the LINDUNG Faedah portal. The employer may not file it on the employee's behalf."},
 			{"fieldname": "custom_lindung_multiple_employers", "label": "Has Multiple Employers", "fieldtype": "Check", "default": "0", "insert_after": "custom_lindung_evidence", "permlevel": 1, "description": "LINDUNG must be deducted by only PERKESO's selected employer. Phase 1 payroll stops for this case rather than guessing."},
-			{"fieldname": "custom_pcb_resident", "label": "Resident for PCB", "fieldtype": "Check", "default": "1", "insert_after": "custom_lindung_multiple_employers", "permlevel": 1},
-			{"fieldname": "custom_pcb_category", "label": "PCB Category", "fieldtype": "Select", "options": "1\n2\n3", "default": "1", "insert_after": "custom_pcb_resident", "permlevel": 1},
-			{"fieldname": "custom_pcb_child_units", "label": "PCB Child Relief Units", "fieldtype": "Float", "default": "0", "insert_after": "custom_pcb_category", "permlevel": 1},
-			{"fieldname": "custom_pcb_individual_disabled", "label": "Individual Disabled", "fieldtype": "Check", "default": "0", "insert_after": "custom_pcb_child_units", "permlevel": 1},
-			{"fieldname": "custom_pcb_spouse_disabled", "label": "Spouse Disabled", "fieldtype": "Check", "default": "0", "insert_after": "custom_pcb_individual_disabled", "permlevel": 1},
+			{"fieldname": "custom_pcb_resident", "label": "Resident for PCB", "fieldtype": "Check", "default": "1", "insert_after": "custom_lindung_multiple_employers", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
+			{"fieldname": "custom_pcb_category", "label": "PCB Category", "fieldtype": "Select", "options": "1\n2\n3", "default": "1", "insert_after": "custom_pcb_resident", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
+			{"fieldname": "custom_pcb_child_units", "label": "PCB Child Relief Units", "fieldtype": "Float", "default": "0", "insert_after": "custom_pcb_category", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
+			{"fieldname": "custom_pcb_individual_disabled", "label": "Individual Disabled", "fieldtype": "Check", "default": "0", "insert_after": "custom_pcb_child_units", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
+			{"fieldname": "custom_pcb_spouse_disabled", "label": "Spouse Disabled", "fieldtype": "Check", "default": "0", "insert_after": "custom_pcb_individual_disabled", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
 		],
 		"Contract": [
 			{"fieldname": "custom_malaysia_terms_section", "label": "Statutory Working Terms", "fieldtype": "Section Break", "insert_after": "contract_terms", "collapsible": 1},
@@ -126,7 +134,8 @@ def create_custom_fields(only_doctypes: set[str] | None = None):
 		],
 		"Salary Slip": [
 			{"fieldname": "custom_malaysia_payroll_section", "label": "Statutory Contributions", "fieldtype": "Section Break", "insert_after": "deductions"},
-			{"fieldname": "custom_malaysia_statutory_results", "label": "Statutory Results", "fieldtype": "Table", "options": "Malaysia Statutory Result", "read_only": 1, "insert_after": "custom_malaysia_payroll_section"},
+			{"fieldname": "custom_malaysia_statutory_profile", "label": "Statutory Profile", "fieldtype": "Data", "read_only": 1, "permlevel": 1, "insert_after": "custom_malaysia_payroll_section"},
+			{"fieldname": "custom_malaysia_statutory_results", "label": "Statutory Results", "fieldtype": "Table", "options": "Malaysia Statutory Result", "read_only": 1, "insert_after": "custom_malaysia_statutory_profile"},
 			{"fieldname": "custom_malaysia_audit_section", "label": "Calculation Details", "fieldtype": "Section Break", "collapsible": 1, "collapsed": 1, "insert_after": "custom_malaysia_statutory_results"},
 			{"fieldname": "custom_malaysia_rule_pack", "label": "Rule Pack", "fieldtype": "Data", "read_only": 1, "insert_after": "custom_malaysia_audit_section"},
 		],

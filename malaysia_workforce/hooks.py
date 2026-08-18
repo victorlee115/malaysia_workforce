@@ -33,6 +33,7 @@ doc_events = {
 	},
 	"Salary Slip": {
 		"validate": "malaysia_workforce.payroll.salary_slip.apply_malaysia_statutory_calculations",
+		"before_submit": "malaysia_workforce.payroll.salary_slip.validate_statutory_profile_snapshot",
 		"before_cancel": "malaysia_workforce.payroll.salary_slip.protect_filed_salary_slip",
 	},
 	"Payroll Entry": {

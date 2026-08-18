@@ -4,9 +4,19 @@ import frappe
 from frappe import _
 from frappe.utils import getdate
 
+from malaysia_workforce.payroll.profile import (
+	SOCSO_EIS_LINDUNG_PROFILE,
+	STANDARD_PAYROLL_PROFILE,
+	STATUTORY_PROFILE_FIELD,
+	is_socso_eis_lindung_profile,
+	normalize_statutory_profile,
+	scheme_applies,
+)
 from malaysia_workforce.payroll.validation import (
+	employee_statutory_profile,
 	hrd_registration_issues,
 	lindung_payroll_issues,
+	socso_eis_earning_component_issues,
 	unclassified_earning_components,
 )
 from malaysia_workforce.statutory.rule_pack import reviewed_through
@@ -31,6 +41,8 @@ def employee_readiness(employee: str, company: str, on_date) -> list[str]:
 			"custom_nric",
 			"custom_epf_member_number",
 			"custom_socso_category",
+			"custom_eis_eligible",
+			STATUTORY_PROFILE_FIELD,
 			"custom_lindung_participation",
 			"custom_lindung_registration_date",
 			"custom_lindung_effective_from",
@@ -46,16 +58,26 @@ def employee_readiness(employee: str, company: str, on_date) -> list[str]:
 		errors.append(_("Employee is not Active."))
 	if row.custom_malaysia_citizenship_status not in {"Malaysian Citizen", "Permanent Resident"}:
 		errors.append(_("Citizenship is outside the supported payroll scope."))
-	for value, label in (
-		(row.date_of_birth, "Date of Birth"),
-		(row.custom_nric, "NRIC"),
-		(row.custom_tax_identification_number, "Tax Identification Number"),
-		(row.custom_epf_member_number, "EPF Member Number"),
-		(row.custom_socso_category, "SOCSO Category"),
-		(row.custom_pcb_category, "PCB Category"),
-	):
+	profile = normalize_statutory_profile(row.get(STATUTORY_PROFILE_FIELD))
+	if profile not in {STANDARD_PAYROLL_PROFILE, SOCSO_EIS_LINDUNG_PROFILE}:
+		errors.append(_("Select a valid Statutory Profile."))
+	required_identity = [(row.custom_nric, "NRIC"), (row.custom_socso_category, "SOCSO Category")]
+	if scheme_applies(profile, "EPF"):
+		required_identity.insert(0, (row.date_of_birth, "Date of Birth"))
+	for value, label in required_identity:
 		if not value:
 			errors.append(_("{0} is missing.").format(label))
+	if is_socso_eis_lindung_profile(profile) and not row.custom_eis_eligible:
+		errors.append(_("EIS Eligible must be enabled for the SOCSO + EIS — LINDUNG Optional profile."))
+	if scheme_applies(profile, "EPF") and not row.custom_epf_member_number:
+		errors.append(_("EPF Member Number is missing."))
+	if scheme_applies(profile, "PCB"):
+		for value, label in (
+			(row.custom_tax_identification_number, "Tax Identification Number"),
+			(row.custom_pcb_category, "PCB Category"),
+		):
+			if not value:
+				errors.append(_("{0} is missing.").format(label))
 	errors.extend(lindung_payroll_issues(row))
 
 	assignment = frappe.db.get_value(
@@ -77,11 +99,14 @@ def employee_readiness(employee: str, company: str, on_date) -> list[str]:
 			},
 			pluck="salary_component",
 		)
-		unclassified = unclassified_earning_components(component_names)
-		if unclassified:
-			errors.append(
-				_("Set PCB Treatment for earning components: {0}.").format(", ".join(unclassified))
-			)
+		if scheme_applies(profile, "PCB"):
+			unclassified = unclassified_earning_components(component_names)
+			if unclassified:
+				errors.append(
+					_("Set PCB Treatment for earning components: {0}.").format(", ".join(unclassified))
+				)
+		else:
+			errors.extend(socso_eis_earning_component_issues(component_names))
 
 	contracts = frappe.get_all(
 		"Contract",
@@ -145,9 +170,28 @@ def employee_readiness(employee: str, company: str, on_date) -> list[str]:
 
 def readiness(doc) -> list[dict]:
 	return [
-		{"employee": employee, "issues": employee_readiness(employee, doc.company, doc.end_date)}
+		{
+			"employee": employee,
+			"profile": normalize_statutory_profile(frappe.db.get_value("Employee", employee, STATUTORY_PROFILE_FIELD)),
+			"issues": employee_readiness(employee, doc.company, doc.end_date),
+		}
 		for employee in _employee_names(doc)
 	]
+
+
+def _stale_profile_slips(payroll_entry: str) -> list[str]:
+	"""Find draft Salary Slips whose saved profile no longer matches Employee."""
+	rows = frappe.get_all(
+		"Salary Slip",
+		filters={"payroll_entry": payroll_entry, "docstatus": 0},
+		fields=["name", "employee", STATUTORY_PROFILE_FIELD],
+	)
+	stale = []
+	for row in rows:
+		current = employee_statutory_profile(row.employee)
+		if normalize_statutory_profile(row.get(STATUTORY_PROFILE_FIELD)) != current:
+			stale.append(row.name)
+	return stale
 
 
 def validate_payroll_release(doc, method=None):
@@ -156,6 +200,13 @@ def validate_payroll_release(doc, method=None):
 	company_issues = hrd_registration_issues(doc.company, doc.end_date)
 	if company_issues:
 		frappe.throw(_("Resolve the Company statutory setup before submitting this Payroll Entry:<br>{0}").format("<br>".join(company_issues)))
+	stale_slips = _stale_profile_slips(doc.name)
+	if stale_slips:
+		frappe.throw(
+			_("These draft Salary Slips use an older Statutory Profile. Open and save them again before submitting Payroll Entry: {0}.").format(
+				", ".join(stale_slips)
+			)
+		)
 	blocked = [row for row in readiness(doc) if row["issues"]]
 	if blocked:
 		details = "<br>".join(

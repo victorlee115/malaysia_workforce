@@ -18,7 +18,7 @@ frappe.ui.form.on("Payroll Entry", {
 						`<li><strong>${__("Company")}</strong>: ${frappe.utils.escape_html(issue)}</li>`
 					);
 					const employeeItems = blocked.map((row) =>
-						`<li><a href="/app/employee/${encodeURIComponent(row.employee)}">${frappe.utils.escape_html(row.employee)}</a>: ${frappe.utils.escape_html(row.issues.join(" "))}</li>`
+						`<li><a href="/app/employee/${encodeURIComponent(row.employee)}">${frappe.utils.escape_html(row.employee)}</a> (${frappe.utils.escape_html(row.profile)}): ${frappe.utils.escape_html(row.issues.join(" "))}</li>`
 					);
 					frappe.msgprint({
 						title: __("Setup needs attention"),

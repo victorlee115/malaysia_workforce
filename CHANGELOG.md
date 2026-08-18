@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Added the explicit `Statutory Profile` field on Employee. `SOCSO + EIS — LINDUNG Optional` keeps contractors in standard Frappe HR records while calculating only SOCSO, EIS and applicable LINDUNG.
+- Excluded that profile from EPF, LHDN and HRD Corp calculations and filings, blocked tax declarations and CP38, and added profile-aware payroll readiness and filing fingerprints.
+- Documented the contractor setup and monthly workflow in the beginner user guide.
+- Granted HR Manager and Auditor permlevel-1 read of the Salary Slip Statutory Profile snapshot so the field is visible after payroll.
+- Added a Statutory Profile column and a default-off Show All Statutory Profiles filter to Malaysia Annual Remuneration, and stopped both payroll reports from losing the profile through `get_list` field permissions.
+- Rejected a direct Salary Slip submit when the saved profile snapshot no longer matches the Employee.
+- Stopped HRMS `calculate_net_pay` from putting Salary Structure Zakat back onto a contractor slip at submit.
+- Showed **Applicable** on the Salary Slip statutory-results grid and moved the Statutory Profile snapshot above that table.
+- Filled the Company filter on payroll reports from the user's sole Company permission when no default is set, and granted System Manager read/select/report on Employee, Salary Slip and Payroll Entry so those report roles can actually run.
+- Directed employees to **View Salary Slips** on HRMS home instead of the blank `/hrms/home/salary` route.
+
 ## 1.0.0-rc.12 — 2026-08-16
 
 - Repaired upgrades from pre-lean schemas that retained permission rows for retired localization roles whose Role records no longer exist. The migration now removes only those orphaned rows before Frappe refreshes Employee Self Service permissions and still stops if a user carries a retired role.

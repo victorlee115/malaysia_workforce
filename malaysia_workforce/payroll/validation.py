@@ -7,6 +7,14 @@ import frappe
 from frappe import _
 from frappe.utils import formatdate, getdate
 
+from malaysia_workforce.payroll.profile import (
+	SOCSO_EIS_LINDUNG_PROFILE,
+	STANDARD_PAYROLL_PROFILE,
+	STATUTORY_PROFILE_FIELD,
+	is_socso_eis_lindung_profile,
+	normalize_statutory_profile,
+	scheme_applies,
+)
 from malaysia_workforce.statutory.calculators.socso import LINDUNG_RELEASE_FROM
 
 LINDUNG_EXISTING_EMPLOYEE_CUTOFF = date(2026, 7, 8)
@@ -38,6 +46,11 @@ def validate_employee(doc, method=None):
 		"Permanent Resident",
 	}:
 		frappe.throw(_("Phase 1 supports Malaysian citizens and permanent residents only."))
+	profile = normalize_statutory_profile(doc.get(STATUTORY_PROFILE_FIELD))
+	if profile not in {STANDARD_PAYROLL_PROFILE, SOCSO_EIS_LINDUNG_PROFILE}:
+		frappe.throw(_("Select a valid Statutory Profile."))
+	if is_socso_eis_lindung_profile(profile) and not doc.get("custom_eis_eligible"):
+		frappe.throw(_("EIS Eligible must be enabled for the SOCSO + EIS — LINDUNG Optional profile."))
 	issues = lindung_release_issues(doc)
 	if issues:
 		frappe.throw("<br>".join(issues))
@@ -103,7 +116,7 @@ def active_malaysian_employee_count(company: str, on_date) -> int:
 	rows = frappe.get_all(
 		"Employee",
 		filters={"company": company, "custom_malaysia_citizenship_status": "Malaysian Citizen"},
-		fields=["status", "date_of_joining", "relieving_date"],
+		fields=["status", "date_of_joining", "relieving_date", STATUTORY_PROFILE_FIELD],
 	)
 	count = 0
 	for row in rows:
@@ -112,6 +125,8 @@ def active_malaysian_employee_count(company: str, on_date) -> int:
 		if row.relieving_date and getdate(row.relieving_date) < on_date:
 			continue
 		if row.status != "Active" and not row.relieving_date:
+			continue
+		if is_socso_eis_lindung_profile(row.get(STATUTORY_PROFILE_FIELD)):
 			continue
 		count += 1
 	return count
@@ -152,6 +167,41 @@ def unclassified_earning_components(component_names) -> list[str]:
 		for row in rows
 		if not row.statistical_component and not row.do_not_include_in_total and not row.custom_pcb_treatment
 	)
+
+
+def socso_eis_earning_component_issues(component_names) -> list[str]:
+	"""Check that a SOCSO/EIS-only salary structure has usable wage bases."""
+	names = sorted({name for name in component_names if name})
+	if not names:
+		return [_("Add at least one earning component to the Salary Structure.")]
+	rows = frappe.get_all(
+		"Salary Component",
+		filters={"name": ["in", names], "type": "Earning"},
+		fields=["name", "statistical_component", "do_not_include_in_total",
+			"custom_include_in_socso_wages", "custom_include_in_eis_wages"],
+	)
+	payable = [row for row in rows if not row.statistical_component and not row.do_not_include_in_total]
+	issues = []
+	if not any(row.custom_include_in_socso_wages for row in payable):
+		issues.append(_("Include at least one earning component in SOCSO wages."))
+	if not any(row.custom_include_in_eis_wages for row in payable):
+		issues.append(_("Include at least one earning component in EIS wages."))
+	return issues
+
+
+def employee_statutory_profile(employee: str) -> str:
+	return normalize_statutory_profile(frappe.db.get_value("Employee", employee, STATUTORY_PROFILE_FIELD))
+
+
+def employee_uses_socso_eis_lindung_profile(employee: str) -> bool:
+	if not employee:
+		return False
+	return is_socso_eis_lindung_profile(employee_statutory_profile(employee))
+
+
+def ensure_employee_tax_profile(employee: str) -> None:
+	if employee and not scheme_applies(employee_statutory_profile(employee), "PCB"):
+		frappe.throw(_("Tax declarations and CP38 are not available for this Employee's Statutory Profile."))
 
 
 def validate_contract(doc, method=None):

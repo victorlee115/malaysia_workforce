@@ -79,6 +79,7 @@ jobs:
           bench --site test.localhost migrate
           bench --site test.localhost migrate
           bench build --app malaysia_workforce
+          bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_statutory_profile
           bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_all
           bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_source_tamper
           bench --site test.localhost execute malaysia_workforce.live_tests.scenarios.run_lindung_release
