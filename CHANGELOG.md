@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0-rc.14 — 2026-08-20
+
 - Rewrote the user guide as a role-first handbook (Employee, HR Manager, Accounts Manager, Auditor, System Manager) with bookmarks, a monthly checklist and a short troubleshooting table, instead of a long numbered setup manual.
 - Made remaining review findings actionable in-product: Statutory Filing list titles (`EPF Jul 2026`), Portal Status wording vs Draft/Submitted, a Setup card on the Malaysia Payroll workspace so Contract is not only under CRM, helper text that PCB Treatment and Statutory Day Type override the nearby HRMS tax/overtime controls, and the relief-claim description column on TP1/TP3 grids.
 - Reviewed every stakeholder workflow on the live site and tightened the screens that failed a first-pass UX check: employee TP1/TP3 relief codes are now a readable list, PCB Category options are labelled, Salary Slip statutory results have their own tab, LINDUNG totals hide on non-PERKESO filings, Payroll Readiness no longer looks empty when everyone is ready, and Check Statutory Setup confirms with a dialog instead of a disappearing alert.
