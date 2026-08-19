@@ -49,6 +49,15 @@ def ensure_tax_declaration_workflows() -> None:
 					"allow_self_approval": 1,
 				},
 				{
+					# Separate transition (not a change to the one above) for HR to send a
+					# Draft for review on behalf of an employee with no self-service access.
+					"state": "Draft",
+					"action": "Send for Review",
+					"next_state": "Pending Review",
+					"allowed": "HR Manager",
+					"allow_self_approval": 1,
+				},
+				{
 					"state": "Pending Review",
 					"action": "Approve",
 					"next_state": "Approved",

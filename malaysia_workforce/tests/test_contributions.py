@@ -3,9 +3,9 @@ from decimal import Decimal
 
 import pytest
 
-from malaysia_workforce.statutory.calculators.eis import calculate_eis
+from malaysia_workforce.statutory.calculators.eis import calculate_eis, is_eis_age_eligible
 from malaysia_workforce.statutory.calculators.epf import calculate_epf, determine_category
-from malaysia_workforce.statutory.calculators.socso import calculate_socso
+from malaysia_workforce.statutory.calculators.socso import calculate_socso, determine_socso_category
 
 
 def d(value) -> Decimal:
@@ -36,6 +36,20 @@ def test_malaysian_age_categories():
 	assert determine_category(citizenship_status="Malaysian", age=59) == "A"
 	assert determine_category(citizenship_status="Malaysian", age=60) == "E"
 	assert determine_category(citizenship_status="Permanent Resident", age=60) == "C"
+
+
+def test_socso_category_age_boundary():
+	assert determine_socso_category(17) == "First"
+	assert determine_socso_category(59) == "First"
+	assert determine_socso_category(60) == "Second"
+	assert determine_socso_category(61) == "Second"
+
+
+def test_eis_age_eligibility_boundary():
+	assert is_eis_age_eligible(17) is False
+	assert is_eis_age_eligible(18) is True
+	assert is_eis_age_eligible(59) is True
+	assert is_eis_age_eligible(60) is False
 
 
 def test_socso_first_category_and_skbbk():

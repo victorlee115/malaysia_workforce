@@ -1,6 +1,6 @@
 {
  "doctype":"Web Form", "name":"my-previous-employment", "module":"Malaysia Workforce", "is_standard":1,
- "doc_type":"Malaysia Previous Employment TP3", "title":"My Previous Employment (TP3)", "route":"my-previous-employment",
+ "doc_type":"Malaysia Previous Employment TP3", "title":"Previous Employment (TP3)", "route":"my-previous-employment",
  "published":1, "login_required":1, "anonymous":0, "allow_edit":1, "allow_delete":1,
  "allow_multiple":1, "show_list":1, "show_sidebar":0, "apply_document_permissions":1,
  "button_label":"Send for Review", "success_title":"Sent for Review",

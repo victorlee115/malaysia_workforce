@@ -15,11 +15,18 @@ from malaysia_workforce.payroll.profile import (
 	normalize_statutory_profile,
 	scheme_applies,
 )
-from malaysia_workforce.statutory.calculators.socso import LINDUNG_RELEASE_FROM
+from malaysia_workforce.statutory.calculators.eis import is_eis_age_eligible
+from malaysia_workforce.statutory.calculators.pcb import leaver_breaks_annual_projection
+from malaysia_workforce.statutory.calculators.socso import LINDUNG_RELEASE_FROM, determine_socso_category
 
 LINDUNG_EXISTING_EMPLOYEE_CUTOFF = date(2026, 7, 8)
 LINDUNG_EXISTING_RELEASE_FROM = date(2026, 7, 13)
 LINDUNG_EXISTING_RELEASE_THROUGH = date(2026, 8, 31)
+
+
+def _age(date_of_birth, on_date) -> int:
+	born, current = getdate(date_of_birth), getdate(on_date)
+	return current.year - born.year - ((current.month, current.day) < (born.month, born.day))
 
 
 def _enabled_company(company: str | None) -> bool:
@@ -49,11 +56,52 @@ def validate_employee(doc, method=None):
 	profile = normalize_statutory_profile(doc.get(STATUTORY_PROFILE_FIELD))
 	if profile not in {STANDARD_PAYROLL_PROFILE, SOCSO_EIS_LINDUNG_PROFILE}:
 		frappe.throw(_("Select a valid Statutory Profile."))
-	if is_socso_eis_lindung_profile(profile) and not doc.get("custom_eis_eligible"):
-		frappe.throw(_("EIS Eligible must be enabled for the SOCSO + EIS — LINDUNG Optional profile."))
+	if doc.get("date_of_birth"):
+		age = _age(doc.date_of_birth, getdate())
+		doc.custom_socso_category = determine_socso_category(age)
+		doc.custom_eis_eligible = is_eis_age_eligible(age)
+	identity_issues = required_identity_field_issues(doc, profile)
+	if identity_issues:
+		frappe.throw("<br>".join(identity_issues))
 	issues = lindung_release_issues(doc)
 	if issues:
 		frappe.throw("<br>".join(issues))
+
+
+def pcb_category_number(value) -> int:
+	"""Return LHDN PCB category 1, 2 or 3 from either a stored code or a labelled option."""
+	head = str(value or "1").strip().split(None, 1)[0].split("-", 1)[0]
+	try:
+		number = int(head)
+	except (TypeError, ValueError):
+		number = 0
+	return number if number in (1, 2, 3) else 1
+
+
+def required_identity_field_issues(employee, profile: str) -> list[str]:
+	"""Presence checks shared by Employee validate() and Payroll Readiness.
+
+	Both must flag the same missing fields, so an Employee cannot look "complete" while
+	still missing something Readiness would block payroll for.
+	"""
+	issues: list[str] = []
+	for value, label in (
+		(employee.get("date_of_birth"), "Date of Birth"),
+		(employee.get("custom_nric"), "NRIC"),
+		(employee.get("custom_socso_category"), "SOCSO Category"),
+	):
+		if not value:
+			issues.append(_("{0} is missing.").format(label))
+	if scheme_applies(profile, "EPF") and not employee.get("custom_epf_member_number"):
+		issues.append(_("EPF Member Number is missing."))
+	if scheme_applies(profile, "PCB"):
+		for value, label in (
+			(employee.get("custom_tax_identification_number"), "Tax Identification Number"),
+			(employee.get("custom_pcb_category"), "PCB Category"),
+		):
+			if not value:
+				issues.append(_("{0} is missing.").format(label))
+	return issues
 
 
 def lindung_release_issues(doc) -> list[str]:
@@ -110,6 +158,28 @@ def lindung_payroll_issues(doc) -> list[str]:
 	return issues
 
 
+def pcb_gate_issues(employee, profile: str, on_date) -> list[str]:
+	"""Fail-closed PCB checks that must hold both when a slip calculates and when it submits.
+
+	Both `calculate_pcb()`'s non-resident branch and its leaver-projection assumption are real,
+	reachable code paths, not stubs — but neither is reviewed for phase 1, so payroll must stop
+	rather than silently use them.
+	"""
+	if not scheme_applies(profile, "PCB"):
+		return []
+	issues: list[str] = []
+	if not employee.get("custom_pcb_resident"):
+		issues.append(
+			_("PCB for a non-resident employee is outside the reviewed phase 1 scope. Payroll is stopped rather than using the estimated non-resident rate.")
+		)
+	relieving_date = getdate(employee.relieving_date) if employee.get("relieving_date") else None
+	if leaver_breaks_annual_projection(relieving_date, getdate(on_date)):
+		issues.append(
+			_("PCB for a leaver is outside the reviewed phase 1 scope. The annual projection cannot assume continued employment through December.")
+		)
+	return issues
+
+
 def active_malaysian_employee_count(company: str, on_date) -> int:
 	"""Count Malaysian citizens employed on a date for the HRD threshold."""
 	on_date = getdate(on_date)
@@ -145,6 +215,10 @@ def hrd_registration_issues_for_count(company_doc, count: int, on_date) -> list[
 		issues.append(
 			_("HRD Corp registration must be Compulsory (1%) because {0} Malaysian employees are employed on the payroll date.").format(count)
 		)
+	if registration_class == "Optional (0.5%)" and count < 5:
+		issues.append(
+			_("HRD Corp Optional (0.5%) registration requires at least five Malaysian employees; {0} are employed on the payroll date.").format(count)
+		)
 	if registration_class in {"Optional (0.5%)", "Compulsory (1%)"}:
 		if not company_doc.get("custom_hrd_registration_number") or not company_doc.get("custom_hrd_effective_from"):
 			issues.append(_("Complete the HRD Corp registration number and effective date."))
@@ -169,24 +243,45 @@ def unclassified_earning_components(component_names) -> list[str]:
 	)
 
 
-def socso_eis_earning_component_issues(component_names) -> list[str]:
-	"""Check that a SOCSO/EIS-only salary structure has usable wage bases."""
+def _wage_base_flag_issues(component_names, flags: dict[str, str]) -> list[str]:
+	"""Check that at least one payable earning component covers each named wage base.
+
+	`flags` maps a Salary Component wage-base checkbox fieldname to the scheme label used
+	in the message, e.g. {"custom_include_in_epf_wages": "EPF"}.
+	"""
 	names = sorted({name for name in component_names if name})
 	if not names:
 		return [_("Add at least one earning component to the Salary Structure.")]
 	rows = frappe.get_all(
 		"Salary Component",
 		filters={"name": ["in", names], "type": "Earning"},
-		fields=["name", "statistical_component", "do_not_include_in_total",
-			"custom_include_in_socso_wages", "custom_include_in_eis_wages"],
+		fields=["name", "statistical_component", "do_not_include_in_total", *flags],
 	)
 	payable = [row for row in rows if not row.statistical_component and not row.do_not_include_in_total]
-	issues = []
-	if not any(row.custom_include_in_socso_wages for row in payable):
-		issues.append(_("Include at least one earning component in SOCSO wages."))
-	if not any(row.custom_include_in_eis_wages for row in payable):
-		issues.append(_("Include at least one earning component in EIS wages."))
-	return issues
+	return [
+		_("Include at least one earning component in {0} wages.").format(label)
+		for fieldname, label in flags.items()
+		if not any(row.get(fieldname) for row in payable)
+	]
+
+
+def socso_eis_earning_component_issues(component_names) -> list[str]:
+	"""Check that a SOCSO/EIS-only salary structure has usable wage bases."""
+	return _wage_base_flag_issues(
+		component_names, {"custom_include_in_socso_wages": "SOCSO", "custom_include_in_eis_wages": "EIS"}
+	)
+
+
+def epf_socso_eis_earning_component_issues(component_names) -> list[str]:
+	"""Check that a Standard-profile salary structure has usable EPF, SOCSO and EIS wage bases."""
+	return _wage_base_flag_issues(
+		component_names,
+		{
+			"custom_include_in_epf_wages": "EPF",
+			"custom_include_in_socso_wages": "SOCSO",
+			"custom_include_in_eis_wages": "EIS",
+		},
+	)
 
 
 def employee_statutory_profile(employee: str) -> str:

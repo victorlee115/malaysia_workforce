@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import date
 from decimal import Decimal
 
 from malaysia_workforce.statutory.common import PCBInput, PCBResult, ZERO, decimal, round_up_5_sen, truncate
@@ -32,7 +33,7 @@ def _reliefs(args: PCBInput) -> Decimal:
 		INDIVIDUAL_RELIEF
 		+ spouse
 		+ (DISABLED_INDIVIDUAL_RELIEF if args.individual_disabled else ZERO)
-		+ (DISABLED_SPOUSE_RELIEF if args.spouse_disabled else ZERO)
+		+ (DISABLED_SPOUSE_RELIEF if args.spouse_disabled and args.category == 2 else ZERO)
 		+ CHILD_UNIT_RELIEF * decimal(args.child_units)
 		+ decimal(args.prior_optional_reliefs)
 		+ decimal(args.current_optional_reliefs)
@@ -57,6 +58,15 @@ def _band_tax(chargeable_income: Decimal, category: int, tax_regime: str) -> Dec
 
 def _qualified_current_epf(prior: Decimal, current: Decimal, limit: Decimal) -> Decimal:
 	return max(min(decimal(current), max(limit - decimal(prior), ZERO)), ZERO)
+
+
+def leaver_breaks_annual_projection(relieving_date: date | None, slip_end: date) -> bool:
+	"""True when a recorded relieving date invalidates _annual_projection's continued-employment
+	assumption: it always projects estimated_future_normal_gross through 31 December regardless
+	of which month is being calculated, so any relieving date earlier in the same tax year breaks it
+	— not just one falling within or before the slip's own period.
+	"""
+	return bool(relieving_date and relieving_date < date(slip_end.year, 12, 31))
 
 
 def _annual_projection(args: PCBInput, *, include_additional: bool) -> tuple[Decimal, Decimal]:

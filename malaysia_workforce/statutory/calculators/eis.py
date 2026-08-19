@@ -8,6 +8,11 @@ RULE_VERSION = "PERKESO-ACT800-2024-10"
 WAGE_CEILING = Decimal("6000")
 
 
+def is_eis_age_eligible(age: int) -> bool:
+	"""EIS covers employees aged 18 up to but not including 60."""
+	return 18 <= age < 60
+
+
 def calculate_eis(wages) -> ContributionResult:
 	wage_base = max(money(wages), ZERO)
 	if wage_base <= ZERO:

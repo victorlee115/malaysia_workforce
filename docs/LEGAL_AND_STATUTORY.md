@@ -13,6 +13,10 @@
 
 Every rule table is checksum-protected and included in `source_manifest.json`. Calculations stop after the reviewed-through date.
 
+### Public holiday pay boundary
+
+The "public-holiday... primitive" above (EA1955 s60D(3)) is the premium for a holiday actually **worked**; it is verified correct for every wage basis, monthly through hourly, including the part-time Regulation 6 variant. The separate s60D(1) entitlement — one ordinary day's wage for a gazetted public holiday a Daily- or Hourly-rated employee does **not** work — is outside this app's scope, because base pay for those wage bases is computed entirely by the underlying HRMS Salary Structure, not by this app. Whether that entitlement is actually paid depends on whether the Salary Structure's earning components are payment-days-prorated (paid, given this app's forced `include_holidays_in_total_working_days`) or attendance/Timesheet-hours-based (not paid, since an unworked day logs no hours). This cannot be determined from data, so Payroll Readiness flags every Daily/Hourly employee for manual review rather than assuming either way — see `docs/USER_GUIDE.md`, "Daily and Hourly base pay, and unworked public holidays."
+
 ### LINDUNG 24 Jam boundaries
 
 The employee release windows are enforced from the official PERKESO FAQ:

@@ -12,14 +12,14 @@ from malaysia_workforce.payroll.profile import (
 	SOCSO_EIS_LINDUNG_PROFILE,
 	STANDARD_PAYROLL_PROFILE,
 	STATUTORY_PROFILE_FIELD,
-	is_socso_eis_lindung_profile,
 	normalize_statutory_profile,
 	scheme_applies,
 )
 from malaysia_workforce.payroll.validation import (
-	employee_statutory_profile,
 	hrd_registration_issues,
 	lindung_payroll_issues,
+	pcb_category_number,
+	pcb_gate_issues,
 )
 from malaysia_workforce.statutory.calculators import (
 	calculate_eis,
@@ -28,9 +28,11 @@ from malaysia_workforce.statutory.calculators import (
 	calculate_pcb,
 	calculate_socso,
 	determine_category,
+	determine_socso_category,
+	is_eis_age_eligible,
 )
 from malaysia_workforce.statutory.common import PCBInput, ZERO, ContributionResult, decimal, money
-from malaysia_workforce.statutory.rule_pack import RULE_PACK
+from malaysia_workforce.statutory.rule_pack import RULE_PACK, assert_rule_pack_covers
 
 MANAGED_DEDUCTIONS = {
 	"EPF Employee", "SOCSO Employee", "SKBBK Employee", "EIS Employee", "PCB", "CP38", "Zakat"
@@ -220,13 +222,24 @@ def _cp38_amount(directive_amount, monthly_deduction, total_paid, already_deduct
 	return money(min(monthly_remaining, remaining))
 
 
-def _cp38(employee: str, company: str, on_date, already_deducted: Decimal) -> Decimal:
+def _effective_cp38_directive(employee: str, company: str, on_date, fields: list[str]):
+	"""Resolve the one CP38 Directive in force on a date, deterministically."""
 	row = frappe.db.get_value(
 		"Malaysia CP38 Directive",
 		{"employee": employee, "company": company, "docstatus": 1, "effective_from": ["<=", on_date]},
-		["name", "directive_amount", "monthly_deduction", "effective_to"], as_dict=True,
+		fields, as_dict=True,
+		order_by="effective_from desc, creation desc",
 	)
 	if not row or (row.effective_to and getdate(row.effective_to) < getdate(on_date)):
+		return None
+	return row
+
+
+def _cp38(employee: str, company: str, on_date, already_deducted: Decimal) -> Decimal:
+	row = _effective_cp38_directive(
+		employee, company, on_date, ["name", "directive_amount", "monthly_deduction", "effective_to"]
+	)
+	if not row:
 		return ZERO
 	total_paid = frappe.db.sql(
 		"""select coalesce(sum(sd.amount), 0) from `tabSalary Detail` sd
@@ -236,6 +249,19 @@ def _cp38(employee: str, company: str, on_date, already_deducted: Decimal) -> De
 		(employee, company, on_date),
 	)[0][0]
 	return _cp38_amount(row.directive_amount, row.monthly_deduction, total_paid, already_deducted)
+
+
+def refresh_cp38_directive_after_submit(doc, method=None):
+	if not any(row.salary_component == "CP38" and decimal(row.amount) > ZERO for row in doc.deductions):
+		return
+	row = _effective_cp38_directive(doc.employee, doc.company, doc.end_date, ["name", "effective_to"])
+	if not row:
+		return
+	from malaysia_workforce.malaysia_workforce.doctype.malaysia_cp38_directive.malaysia_cp38_directive import (
+		refresh_cp38_balance,
+	)
+
+	refresh_cp38_balance(row.name)
 
 
 def _result(result: ContributionResult, *, regular=ZERO, additional=ZERO) -> dict:
@@ -276,8 +302,8 @@ def apply_malaysia_statutory_calculations(doc, method=None):
 		return
 	employee = frappe.db.get_value(
 		"Employee", doc.employee,
-		["custom_malaysia_citizenship_status", "date_of_birth",
-			"custom_socso_category", "custom_eis_eligible", "custom_pcb_resident", "custom_pcb_category",
+		["custom_malaysia_citizenship_status", "date_of_birth", "relieving_date",
+			"custom_pcb_resident", "custom_pcb_category",
 			STATUTORY_PROFILE_FIELD,
 			"custom_pcb_child_units", "custom_pcb_individual_disabled", "custom_pcb_spouse_disabled",
 		 "custom_lindung_participation", "custom_lindung_registration_date", "custom_lindung_effective_from",
@@ -288,11 +314,16 @@ def apply_malaysia_statutory_calculations(doc, method=None):
 	profile = normalize_statutory_profile(employee.get(STATUTORY_PROFILE_FIELD))
 	if profile not in {STANDARD_PAYROLL_PROFILE, SOCSO_EIS_LINDUNG_PROFILE}:
 		frappe.throw(_("Employee {0} has an invalid Statutory Profile.").format(doc.employee))
-	if is_socso_eis_lindung_profile(profile) and not employee.custom_eis_eligible:
-		frappe.throw(_("EIS Eligible must be enabled for the SOCSO + EIS — LINDUNG Optional profile."))
+	assert_rule_pack_covers(doc.end_date)
+	if not employee.date_of_birth:
+		frappe.throw(_("Date of Birth is missing."))
+	age = _age(employee.date_of_birth, doc.end_date)
 	lindung_issues = lindung_payroll_issues(employee)
 	if lindung_issues:
 		frappe.throw("<br>".join(lindung_issues))
+	pcb_issues = pcb_gate_issues(employee, profile, doc.end_date)
+	if pcb_issues:
+		frappe.throw("<br>".join(pcb_issues))
 	hrd_issues = hrd_registration_issues(doc.company, doc.end_date)
 	if hrd_issues:
 		frappe.throw("<br>".join(hrd_issues))
@@ -327,13 +358,12 @@ def apply_malaysia_statutory_calculations(doc, method=None):
 	if not scheme_applies(profile, "EPF"):
 		epf = _not_applicable("EPF", current["epf_regular"] + current["epf_additional"])
 	else:
-		age = _age(employee.date_of_birth, doc.end_date)
 		epf_category = determine_category(citizenship_status=employee.custom_malaysia_citizenship_status, age=age)
 		epf_total = calculate_epf(month["epf_regular"] + month["epf_additional"], epf_category)
 		epf = _delta(epf_total, history["same_employee"]["EPF"], history["same_employer"]["EPF"])
 	socso_total = calculate_socso(
 		month["socso"],
-		employee.custom_socso_category or "First",
+		determine_socso_category(age),
 		contribution_date=getdate(doc.end_date),
 		lindung_participation=employee.custom_lindung_participation,
 		lindung_effective_from=(
@@ -341,11 +371,11 @@ def apply_malaysia_statutory_calculations(doc, method=None):
 		),
 	)
 	socso = _delta(socso_total, history["same_employee"]["SOCSO"], history["same_employer"]["SOCSO"], history["same_employee"]["SKBBK"])
-	if employee.custom_eis_eligible:
+	if is_eis_age_eligible(age):
 		eis_total = calculate_eis(month["eis"])
 		eis = _delta(eis_total, history["same_employee"]["EIS"], history["same_employer"]["EIS"])
 	else:
-		eis = ContributionResult("EIS", month["eis"], applicable=False, explanation=("Employee is not EIS eligible.",))
+		eis = ContributionResult("EIS", month["eis"], applicable=False, explanation=("Employee is outside the EIS age band (18 up to but not including 60).",))
 	company = frappe.get_cached_doc("Company", doc.company)
 	if not scheme_applies(profile, "HRD Corp"):
 		hrd = _not_applicable("HRD Corp", current["hrd"])
@@ -374,7 +404,7 @@ def apply_malaysia_statutory_calculations(doc, method=None):
 		additional_epf = max(epf_total.employee - normal_epf, ZERO)
 		pcb_args = PCBInput(
 			month=getdate(doc.end_date).month, resident=bool(employee.custom_pcb_resident),
-			category=int(employee.custom_pcb_category or 1), current_normal_gross=month["pcb_regular"],
+			category=pcb_category_number(employee.custom_pcb_category), current_normal_gross=month["pcb_regular"],
 			current_additional_gross=month["pcb_additional"],
 			prior_gross=history["prior_gross"] + declarations["tp3_gross"],
 			prior_epf_relief=history["prior_epf"] + declarations["tp3_epf"],
@@ -451,15 +481,28 @@ def _drop_inapplicable_managed_deductions(doc, profile) -> None:
 def validate_statutory_profile_snapshot(doc, method=None):
 	if not frappe.db.get_value("Company", doc.company, "custom_enable_malaysia_payroll"):
 		return
-	current = employee_statutory_profile(doc.employee)
+	employee = frappe.db.get_value(
+		"Employee", doc.employee,
+		[STATUTORY_PROFILE_FIELD, "custom_pcb_resident", "relieving_date"], as_dict=True,
+	)
+	current = normalize_statutory_profile(employee.get(STATUTORY_PROFILE_FIELD))
 	if normalize_statutory_profile(doc.get(STATUTORY_PROFILE_FIELD)) != current:
 		frappe.throw(_("This Salary Slip uses an older Statutory Profile. Open and save it again before submitting."))
+	# Frappe submit() sets docstatus=1 before validate runs, so a slip calculated while still
+	# compliant (e.g. still resident, or employed) must have these fail-closed gates re-checked
+	# here in case a disqualifying change happened after the last calculate.
+	assert_rule_pack_covers(doc.end_date)
+	pcb_issues = pcb_gate_issues(employee, current, doc.end_date)
+	if pcb_issues:
+		frappe.throw("<br>".join(pcb_issues))
 
 
 def protect_filed_salary_slip(doc, method=None):
-	if frappe.db.exists(
+	filings = frappe.get_all(
 		"Malaysia Statutory Filing",
-		{"company": doc.company, "period_start": ["<=", doc.end_date], "period_end": [">=", doc.start_date],
-		 "docstatus": 1},
-	):
+		filters={"company": doc.company, "period_start": ["<=", doc.end_date], "period_end": [">=", doc.start_date],
+			"docstatus": 1},
+		pluck="name",
+	)
+	if filings and frappe.db.exists("Malaysia Filing Employee", {"parent": ["in", filings], "employee": doc.employee}):
 		frappe.throw(_("This Salary Slip is included in a submitted statutory filing. Create an amendment instead."))

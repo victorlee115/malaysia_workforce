@@ -11,6 +11,11 @@ LINDUNG_START = date(2026, 6, 1)
 LINDUNG_RELEASE_FROM = date(2026, 7, 8)
 
 
+def determine_socso_category(age: int) -> str:
+	"""First Category (invalidity + employment injury) under 60; Second (employment injury only) from 60."""
+	return "Second" if age >= 60 else "First"
+
+
 def calculate_socso(
 	wages,
 	category: str = "First",

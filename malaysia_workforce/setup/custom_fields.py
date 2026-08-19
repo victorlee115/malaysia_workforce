@@ -98,15 +98,15 @@ def create_custom_fields(only_doctypes: set[str] | None = None):
 			{"fieldname": "custom_nric", "label": "NRIC", "fieldtype": "Data", "insert_after": "custom_malaysia_statutory_profile", "permlevel": 1},
 			{"fieldname": "custom_tax_identification_number", "label": "Tax Identification Number", "fieldtype": "Data", "insert_after": "custom_nric", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
 			{"fieldname": "custom_epf_member_number", "label": "EPF Member Number", "fieldtype": "Data", "insert_after": "custom_tax_identification_number", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
-			{"fieldname": "custom_socso_category", "label": "SOCSO Category", "fieldtype": "Select", "options": "First\nSecond", "default": "First", "insert_after": "custom_epf_member_number", "permlevel": 1},
-			{"fieldname": "custom_eis_eligible", "label": "EIS Eligible", "fieldtype": "Check", "default": "1", "insert_after": "custom_socso_category", "permlevel": 1},
+			{"fieldname": "custom_socso_category", "label": "SOCSO Category", "fieldtype": "Select", "options": "First\nSecond", "default": "First", "insert_after": "custom_epf_member_number", "permlevel": 1, "read_only": 1, "description": "Auto-derived from Date of Birth: First Category (invalidity + employment injury) under age 60, Second Category (employment injury only) from age 60."},
+			{"fieldname": "custom_eis_eligible", "label": "EIS Eligible", "fieldtype": "Check", "default": "1", "insert_after": "custom_socso_category", "permlevel": 1, "read_only": 1, "description": "Auto-derived from Date of Birth: EIS applies from age 18 up to age 60."},
 			{"fieldname": "custom_lindung_participation", "label": "LINDUNG 24 Jam Participation", "fieldtype": "Select", "options": "Participating\nNot Participating", "default": "Participating", "insert_after": "custom_eis_eligible", "permlevel": 1, "description": "Participation is the statutory default from 1 June 2026. Select Not Participating only after the employee has personally filed a PERKESO Liability Release Notice."},
 			{"fieldname": "custom_lindung_registration_date", "label": "PERKESO Registration Date", "fieldtype": "Date", "insert_after": "custom_lindung_participation", "depends_on": "eval:doc.custom_lindung_participation=='Not Participating'", "mandatory_depends_on": "eval:doc.custom_lindung_participation=='Not Participating'", "permlevel": 1, "description": "Required only to validate the official liability-release window."},
 			{"fieldname": "custom_lindung_effective_from", "label": "Liability Release Effective From", "fieldtype": "Date", "insert_after": "custom_lindung_registration_date", "depends_on": "eval:doc.custom_lindung_participation=='Not Participating'", "mandatory_depends_on": "eval:doc.custom_lindung_participation=='Not Participating'", "permlevel": 1, "description": "Date the employee's PERKESO Liability Release Notice takes effect. Contributions continue for every month ending before this date."},
 			{"fieldname": "custom_lindung_evidence", "label": "Liability Release Notice", "fieldtype": "Attach", "insert_after": "custom_lindung_effective_from", "depends_on": "eval:doc.custom_lindung_participation=='Not Participating'", "permlevel": 1, "description": "The employee's own Notis/Perakuan Pelepasan Liabiliti from the LINDUNG Faedah portal. The employer may not file it on the employee's behalf."},
 			{"fieldname": "custom_lindung_multiple_employers", "label": "Has Multiple Employers", "fieldtype": "Check", "default": "0", "insert_after": "custom_lindung_evidence", "permlevel": 1, "description": "LINDUNG must be deducted by only PERKESO's selected employer. Phase 1 payroll stops for this case rather than guessing."},
 			{"fieldname": "custom_pcb_resident", "label": "Resident for PCB", "fieldtype": "Check", "default": "1", "insert_after": "custom_lindung_multiple_employers", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
-			{"fieldname": "custom_pcb_category", "label": "PCB Category", "fieldtype": "Select", "options": "1\n2\n3", "default": "1", "insert_after": "custom_pcb_resident", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
+			{"fieldname": "custom_pcb_category", "label": "PCB Category", "fieldtype": "Select", "options": "1 - Single\n2 - Married, spouse not working\n3 - Married, spouse working", "default": "1 - Single", "insert_after": "custom_pcb_resident", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON, "description": "LHDN monthly tax category for this employee."},
 			{"fieldname": "custom_pcb_child_units", "label": "PCB Child Relief Units", "fieldtype": "Float", "default": "0", "insert_after": "custom_pcb_category", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
 			{"fieldname": "custom_pcb_individual_disabled", "label": "Individual Disabled", "fieldtype": "Check", "default": "0", "insert_after": "custom_pcb_child_units", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
 			{"fieldname": "custom_pcb_spouse_disabled", "label": "Spouse Disabled", "fieldtype": "Check", "default": "0", "insert_after": "custom_pcb_individual_disabled", "permlevel": 1, "depends_on": STANDARD_PROFILE_DEPENDS_ON},
@@ -129,23 +129,42 @@ def create_custom_fields(only_doctypes: set[str] | None = None):
 			{"fieldname": "custom_include_in_socso_wages", "label": "Include in SOCSO Wages", "fieldtype": "Check", "default": "0", "insert_after": "custom_include_in_epf_wages"},
 			{"fieldname": "custom_include_in_eis_wages", "label": "Include in EIS Wages", "fieldtype": "Check", "default": "0", "insert_after": "custom_include_in_socso_wages"},
 			{"fieldname": "custom_include_in_hrd_levy_wages", "label": "Include in HRD Levy Wages", "fieldtype": "Check", "default": "0", "insert_after": "custom_include_in_eis_wages"},
-			{"fieldname": "custom_pcb_treatment", "label": "PCB Treatment", "fieldtype": "Select", "options": "\nNot Taxable\nRegular Remuneration\nAdditional Remuneration", "insert_after": "custom_include_in_hrd_levy_wages"},
+			{"fieldname": "custom_pcb_treatment", "label": "PCB Treatment", "fieldtype": "Select", "options": "\nNot Taxable\nRegular Remuneration\nAdditional Remuneration", "insert_after": "custom_include_in_hrd_levy_wages", "description": "This is the Malaysian PCB classification used in payroll. The HRMS “Is Tax Applicable” checkbox above does not drive PCB."},
 			{"fieldname": "custom_include_in_ordinary_rate", "label": "Include in Ordinary Rate of Pay", "fieldtype": "Check", "default": "0", "insert_after": "custom_pcb_treatment"},
 		],
 		"Salary Slip": [
-			{"fieldname": "custom_malaysia_payroll_section", "label": "Statutory Contributions", "fieldtype": "Section Break", "insert_after": "deductions"},
+			{"fieldname": "custom_malaysia_results_tab", "label": "Statutory", "fieldtype": "Tab Break", "insert_after": "deductions"},
+			{"fieldname": "custom_malaysia_payroll_section", "label": "Statutory Contributions", "fieldtype": "Section Break", "insert_after": "custom_malaysia_results_tab"},
 			{"fieldname": "custom_malaysia_statutory_profile", "label": "Statutory Profile", "fieldtype": "Data", "read_only": 1, "permlevel": 1, "insert_after": "custom_malaysia_payroll_section"},
 			{"fieldname": "custom_malaysia_statutory_results", "label": "Statutory Results", "fieldtype": "Table", "options": "Malaysia Statutory Result", "read_only": 1, "insert_after": "custom_malaysia_statutory_profile"},
 			{"fieldname": "custom_malaysia_audit_section", "label": "Calculation Details", "fieldtype": "Section Break", "collapsible": 1, "collapsed": 1, "insert_after": "custom_malaysia_statutory_results"},
 			{"fieldname": "custom_malaysia_rule_pack", "label": "Rule Pack", "fieldtype": "Data", "read_only": 1, "insert_after": "custom_malaysia_audit_section"},
 		],
 		"Overtime Type": [
-			{"fieldname": "custom_malaysia_pay_type", "label": "Statutory Day Type", "fieldtype": "Select", "options": "\nNormal Overtime\nRest Day\nPublic Holiday", "insert_after": "overtime_salary_component"},
+			{"fieldname": "custom_malaysia_pay_type", "label": "Statutory Day Type", "fieldtype": "Select", "options": "\nNormal Overtime\nRest Day\nPublic Holiday", "insert_after": "overtime_salary_component", "description": "Malaysian overtime pay uses this day type. Do not use the HRMS public-holiday or weekend multiplier checkboxes for statutory overtime."},
 		],
 	}
 	if only_doctypes:
 		fields = {doctype: rows for doctype, rows in fields.items() if doctype in only_doctypes}
 	_create_custom_fields(fields, update=True)
+	if not only_doctypes or "Employee" in only_doctypes:
+		_relabel_stored_pcb_categories()
+
+
+def _relabel_stored_pcb_categories() -> None:
+	"""Keep existing 1/2/3 codes selectable after the labelled options are installed."""
+	if not frappe.db.has_column("Employee", "custom_pcb_category"):
+		return
+	mapping = {
+		"1": "1 - Single",
+		"2": "2 - Married, spouse not working",
+		"3": "3 - Married, spouse working",
+	}
+	for old, new in mapping.items():
+		frappe.db.sql(
+			"update `tabEmployee` set custom_pcb_category = %s where custom_pcb_category = %s",
+			(new, old),
+		)
 
 
 def remove_legacy_custom_fields() -> None:

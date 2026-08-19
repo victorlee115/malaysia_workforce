@@ -29,6 +29,8 @@ COMPANY_SERIALIZER_FIELDS = (
 	"custom_socso_employer_code",
 	"custom_lhdn_hq_number",
 	"custom_lhdn_employer_number",
+	"custom_hrd_registration_class",
+	"custom_hrd_registration_number",
 )
 EMPLOYEE_SERIALIZER_FIELDS = (
 	"employee_name",
@@ -192,12 +194,17 @@ def _render(filing, items: list[dict], company: dict) -> tuple[str, bytes]:
 	if filing.authority == "HRD Corp":
 		stream = io.StringIO(newline="")
 		writer = csv.writer(stream, lineterminator="\r\n")
-		writer.writerow(["Employee", "Employee Name", "Leviable Wages", "Employer Levy"])
+		writer.writerow(["HRD Corp Registration Class", company.get("custom_hrd_registration_class") or ""])
+		writer.writerow(["HRD Corp Registration Number", company.get("custom_hrd_registration_number") or ""])
+		writer.writerow([])
+		writer.writerow(["Employee", "NRIC", "Employee Name", "Leviable Wages", "Employer Levy"])
 		for item in items:
+			emp = item["identity"]
 			writer.writerow(
 				[
 					item["employee"],
-					item["identity"].get("employee_name") or item["employee_name"],
+					emp.get("custom_nric") or "",
+					emp.get("employee_name") or item["employee_name"],
 					f"{item['wages']:.2f}",
 					f"{item['employer_amount']:.2f}",
 				]
@@ -230,10 +237,52 @@ def prepare_filing(filing) -> dict:
 	filing.total_additional = sum((item["additional_amount"] for item in items), Decimal("0"))
 	filing.source_hash = source_hash
 	filing.rule_pack = RULE_PACK
+	for stale_file in frappe.get_all(
+		"File",
+		filters={"attached_to_doctype": filing.doctype, "attached_to_name": filing.name, "attached_to_field": "generated_file"},
+		pluck="name",
+	):
+		frappe.delete_doc("File", stale_file, ignore_permissions=True)
 	file_doc = frappe.get_doc({"doctype": "File", "file_name": name, "content": content, "is_private": 1,
 		"attached_to_doctype": filing.doctype, "attached_to_name": filing.name, "attached_to_field": "generated_file"}).save(ignore_permissions=True)
 	filing.generated_file = file_doc.file_url; filing.file_hash = sha256_bytes(content); filing.save()
 	return {"status": "Prepared", "employees": len(items), "file": filing.generated_file, "source_hash": source_hash}
+
+
+def scheme_breakdown(filing) -> dict[str, dict[str, Decimal]]:
+	"""Scheme-split control totals for the print format, computed at render time.
+
+	`employee_lines` only stores each employee's aggregate, not the per-scheme split, and
+	persisting that split would need a schema migration — recompute it here instead from
+	`Malaysia Statutory Result` rows scoped to the employees already recorded on this filing.
+	"""
+	employees = [row.employee for row in (filing.employee_lines or [])]
+	if not employees:
+		return {}
+	slips = frappe.get_all(
+		"Salary Slip",
+		filters={"company": filing.company, "employee": ["in", employees], "docstatus": 1,
+			"end_date": ["between", [filing.period_start, filing.period_end]]},
+		pluck="name",
+	)
+	if not slips:
+		return {}
+	rows = frappe.get_all(
+		"Malaysia Statutory Result",
+		filters={"parent": ["in", slips], "parenttype": "Salary Slip", "scheme": ["in", list(_schemes(filing))], "applicable": 1},
+		fields=["scheme", "wage_base", "employee_amount", "employer_amount", "extra_employee_amount"],
+	)
+	breakdown: dict[str, dict[str, Decimal]] = {}
+	for row in rows:
+		bucket = breakdown.setdefault(row.scheme, {
+			"wage_base": Decimal("0"), "employee_amount": Decimal("0"),
+			"employer_amount": Decimal("0"), "extra_employee_amount": Decimal("0"),
+		})
+		bucket["wage_base"] += Decimal(str(row.wage_base or 0))
+		bucket["employee_amount"] += Decimal(str(row.employee_amount or 0))
+		bucket["employer_amount"] += Decimal(str(row.employer_amount or 0))
+		bucket["extra_employee_amount"] += Decimal(str(row.extra_employee_amount or 0))
+	return breakdown
 
 
 def validate_filing_source(filing) -> None:

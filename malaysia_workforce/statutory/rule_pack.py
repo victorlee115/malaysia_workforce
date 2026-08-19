@@ -5,6 +5,10 @@ import json
 from datetime import date
 from pathlib import Path
 
+import frappe
+from frappe import _
+from frappe.utils import getdate
+
 RULE_PACK = "MY-2026.2"
 DATA_DIR = Path(__file__).resolve().parent / "data"
 RULE_FILES = (
@@ -33,3 +37,13 @@ def rule_pack_hash() -> str:
 def reviewed_through() -> date:
 	value = json.loads((DATA_DIR / "source_manifest.json").read_text())["reviewed_through"]
 	return date.fromisoformat(value)
+
+
+def assert_rule_pack_covers(on_date) -> None:
+	"""Fail closed when a payroll date runs past what the installed rule pack was reviewed for."""
+	if getdate(on_date) > reviewed_through():
+		frappe.throw(
+			_("The installed statutory rule pack is reviewed only through {0}. Install a reviewed app release before submission.").format(
+				reviewed_through()
+			)
+		)

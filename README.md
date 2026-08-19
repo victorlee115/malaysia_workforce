@@ -7,6 +7,8 @@
 
 Malaysia Workforce is a lean Malaysian payroll localisation for Frappe HR. It keeps standard Frappe HR records and screens authoritative and adds the statutory behaviour that the Malaysia country context needs.
 
+*Naming note: the Frappe Module is `Malaysia Workforce` (internal grouping used by every doctype's `module` key) and the app title is `Malaysia Payroll` (the product name shown in the app list). This split is intentional, not an oversight — renaming the Module is a breaking, migration-relevant change out of scope for a cosmetic fix.*
+
 It adds:
 
 - effective-dated EPF, SOCSO, LINDUNG 24 Jam, EIS, PCB, HRD Corp and minimum-wage rules;
@@ -63,7 +65,7 @@ The currently pinned upstream Frappe 16.31.0 release has a clean-site bootstrap 
 
 - [Installation](docs/INSTALLATION.md)
 - [Configuration](docs/CONFIGURATION.md)
-- [Complete beginner's user guide](docs/USER_GUIDE.md)
+- [User guide for every role](docs/USER_GUIDE.md)
 - [Frappe HR ownership](docs/FRAPPE_HR_CONFIGURATION.md)
 - [Payroll operations](docs/OPERATIONS.md)
 - [Statutory scope](docs/LEGAL_AND_STATUTORY.md)

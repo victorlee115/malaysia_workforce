@@ -18,6 +18,12 @@ TP3_MONEY_FIELDS = (
 )
 
 
+def canonical_relief_code(value: Any) -> str:
+	"""Return C1–C17 from either a stored code or a labelled select option."""
+	token = str(value or "").strip().upper().split()[0] if str(value or "").strip() else ""
+	return token.split("-", 1)[0] if token else ""
+
+
 def load_tp1_relief_rules(tax_year: int) -> dict[str, dict[str, Any]]:
 	data = json.loads(TP1_RULE_PATH.read_text(encoding="utf-8"))
 	if int(data.get("effective_year") or 0) != int(tax_year):
@@ -53,7 +59,7 @@ def validate_tp1_rows(rows: list[dict], *, tax_year: int) -> list[dict]:
 	seen: set[tuple[str, str]] = set()
 	cleaned = []
 	for index, row in enumerate(rows, 1):
-		code = str(row.get("relief_code") or "").strip().upper()
+		code = canonical_relief_code(row.get("relief_code"))
 		if code not in rules:
 			raise ValueError(f"Row {index}: {code or 'blank'} is not a valid TP1 code for {tax_year}.")
 		amount = nonnegative_decimal(row.get("amount"), f"Row {index} amount")
@@ -86,17 +92,14 @@ def validate_tp1_rows(rows: list[dict], *, tax_year: int) -> list[dict]:
 
 def manual_review_codes(rows: list[dict], *, tax_year: int) -> list[str]:
 	rules = load_tp1_relief_rules(tax_year)
-	return sorted(
-		{
-			str(row.get("relief_code") or "")
-			for row in rows
-			if row.get("relief_code") in rules
-			and any(
-				str(key).startswith("requires_manual_") and value
-				for key, value in rules[row["relief_code"]].items()
-			)
-		}
-	)
+	found = set()
+	for row in rows:
+		code = canonical_relief_code(row.get("relief_code"))
+		if code in rules and any(
+			str(key).startswith("requires_manual_") and value for key, value in rules[code].items()
+		):
+			found.add(code)
+	return sorted(found)
 
 
 def submitted_relief_rows(

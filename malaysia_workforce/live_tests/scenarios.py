@@ -1240,12 +1240,21 @@ def run_statutory_profile(*, commit: bool = True) -> dict:
 	if issues:
 		frappe.throw(f"Contractor readiness should pass without TIN, EPF or PCB category: {issues}")
 
-	original_eis = frappe.db.get_value("Employee", contractor, "custom_eis_eligible")
-	frappe.db.set_value("Employee", contractor, "custom_eis_eligible", 0, update_modified=False)
-	eis_issues = " ".join(employee_readiness(contractor, COMPANY, JUNE_END))
-	frappe.db.set_value("Employee", contractor, "custom_eis_eligible", original_eis, update_modified=False)
-	if "EIS Eligible" not in eis_issues:
-		frappe.throw(f"Disabled EIS did not fail contractor readiness: {eis_issues}")
+	# SOCSO Category and EIS Eligible are auto-derived from Date of Birth (age >= 60 means
+	# Second Category and EIS-ineligible), so a 60+ contractor with correctly auto-derived
+	# values must NOT fail readiness over that — it is the age-correct state, not a setup gap.
+	original_snapshot = frappe.db.get_value(
+		"Employee", contractor, ["date_of_birth", "custom_socso_category", "custom_eis_eligible"], as_dict=True
+	)
+	frappe.db.set_value(
+		"Employee", contractor,
+		{"date_of_birth": date(1960, 1, 1), "custom_socso_category": "Second", "custom_eis_eligible": 0},
+		update_modified=False,
+	)
+	sixty_plus_issues = " ".join(employee_readiness(contractor, COMPANY, JUNE_END))
+	frappe.db.set_value("Employee", contractor, dict(original_snapshot), update_modified=False)
+	if "EIS" in sixty_plus_issues:
+		frappe.throw(f"A 60+ contractor with correctly auto-derived EIS ineligibility should not fail readiness: {sixty_plus_issues}")
 
 	original_socso = frappe.db.get_value("Employee", contractor, "custom_socso_category")
 	frappe.db.set_value("Employee", contractor, "custom_socso_category", None, update_modified=False)

@@ -45,4 +45,11 @@ def execute(filters=None):
 			"profile": normalize_statutory_profile(employee.get(STATUTORY_PROFILE_FIELD)),
 			"status": "Needs Attention" if issues else "Ready", "issues": " ".join(issues),
 			"indicator": "red" if issues else "green"})
+	if not rows:
+		rows.append({
+			"employee_name": _("All checked employees"),
+			"status": "Ready",
+			"issues": _("Nothing needs attention. Tick Show Ready Employees to list everyone."),
+			"indicator": "green",
+		})
 	return columns, rows

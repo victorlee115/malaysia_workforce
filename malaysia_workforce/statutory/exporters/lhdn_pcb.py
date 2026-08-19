@@ -53,8 +53,11 @@ def render_header(
 		raise ValueError("LHDN month must be between 1 and 12")
 	if int(year) < 2000 or int(year) > 9999:
 		raise ValueError("LHDN year must contain four digits")
-	mtd_records = sum(1 for item in items if item.mtd_amount > 0)
-	cp38_records = sum(1 for item in items if item.cp38_amount > 0)
+	# generate_lhdn_pcb_file() writes one D-line per item regardless of amount, so the header
+	# count must match that total rather than filtering by nonzero amount — a filtered count
+	# would under-report against the D-lines actually present. Confirm against the official
+	# LHDN Exhibit 4/e-Data PCB spec during portal UAT.
+	record_count = str(len(items)).zfill(5)
 	record = "".join(
 		(
 			"H",
@@ -63,9 +66,9 @@ def render_header(
 			str(int(year)).zfill(4),
 			str(int(month)).zfill(2),
 			cents(sum((item.mtd_amount for item in items), Decimal("0")), 10),
-			str(mtd_records).zfill(5),
+			record_count,
 			cents(sum((item.cp38_amount for item in items), Decimal("0")), 10),
-			str(cp38_records).zfill(5),
+			record_count,
 		)
 	)
 	return assert_length(record, HEADER_LENGTH, "LHDN PCB header")

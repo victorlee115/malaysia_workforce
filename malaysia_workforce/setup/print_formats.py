@@ -461,6 +461,232 @@ SALARY_SLIP_CSS = """
 """
 
 
+FILING_PRINT_FORMAT = "Malaysia Statutory Filing Working Paper"
+
+
+FILING_HTML = r"""
+<style>
+    .mw-filing {
+        color: #171717;
+        font-family: var(--font-stack, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+        font-size: 10.5px;
+        line-height: 1.35;
+    }
+
+    .mw-filing table { border-collapse: collapse; margin: 0; width: 100%; }
+    .mw-filing th, .mw-filing td { padding: 5px 7px; vertical-align: top; }
+    .mw-filing .letterhead { margin-bottom: 10px; }
+
+    .mw-filing .fallback-letterhead {
+        border-bottom: 2px solid #2490ef;
+        margin-bottom: 12px;
+        padding: 0 0 8px;
+    }
+
+    .mw-filing .company-name { font-size: 16px; font-weight: 700; }
+
+    .mw-filing .title-row {
+        border-bottom: 1px solid #d1d5db;
+        margin-bottom: 10px;
+        padding-bottom: 7px;
+    }
+
+    .mw-filing .title { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+    .mw-filing .document-number { color: #6b7280; font-size: 9px; text-align: right; }
+    .mw-filing .meta { margin-bottom: 10px; }
+    .mw-filing .meta td { border: 1px solid #e5e7eb; width: 25%; }
+
+    .mw-filing .label {
+        color: #6b7280;
+        display: block;
+        font-size: 8.5px;
+        margin-bottom: 2px;
+        text-transform: uppercase;
+    }
+
+    .mw-filing .value { font-weight: 600; overflow-wrap: anywhere; }
+    .mw-filing .summary { margin-bottom: 12px; }
+    .mw-filing .summary td { background: #f5f7fa; border: 1px solid #e5e7eb; padding: 8px 9px; width: 25%; }
+    .mw-filing .summary .summary-value { font-size: 14px; font-weight: 700; }
+    .mw-filing .section { margin: 12px 0 0; page-break-inside: avoid; }
+
+    .mw-filing .section-title {
+        background: #f5f7fa;
+        border-bottom: 2px solid #2490ef;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 6px 7px;
+    }
+
+    .mw-filing .data-table thead { display: table-header-group; }
+    .mw-filing .data-table tr { page-break-inside: avoid; }
+
+    .mw-filing .data-table th {
+        background: #fafafa;
+        border-bottom: 1px solid #d1d5db;
+        color: #4b5563;
+        font-size: 8.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .mw-filing .data-table td { border-bottom: 1px solid #edf0f2; }
+    .mw-filing .data-table .amount { text-align: right; white-space: nowrap; width: 18%; }
+    .mw-filing .data-table .scheme { width: 30%; }
+    .mw-filing .muted { color: #6b7280; }
+
+    .mw-filing .footer {
+        border-top: 1px solid #e5e7eb;
+        color: #6b7280;
+        font-size: 8.5px;
+        margin-top: 14px;
+        padding-top: 7px;
+        page-break-inside: avoid;
+    }
+
+    @media print {
+        @page { size: A4 portrait; margin: 11mm 12mm; }
+        .mw-filing .section, .mw-filing .footer { break-inside: avoid; }
+    }
+</style>
+
+<div class="mw-filing">
+    {% if letter_head %}
+        <div class="letterhead">{{ letter_head }}</div>
+    {% else %}
+        <div class="fallback-letterhead">
+            <div class="company-name">{{ doc.company }}</div>
+        </div>
+    {% endif %}
+
+    <table class="title-row">
+        <tr>
+            <td style="padding-left: 0;">
+                <div class="title">{{ doc.authority }} {{ _("Statutory Filing Working Paper") }}</div>
+                <div class="muted">{{ doc.get_formatted("period_start") }} – {{ doc.get_formatted("period_end") }}</div>
+            </td>
+            <td class="document-number" style="padding-right: 0;">{{ doc.name }}</td>
+        </tr>
+    </table>
+
+    <table class="meta">
+        <tr>
+            <td>
+                <span class="label">{{ _("Authority Status") }}</span>
+                <span class="value">{{ doc.authority_status or "—" }}</span>
+            </td>
+            <td>
+                <span class="label">{{ _("Reconciliation Status") }}</span>
+                <span class="value">{{ doc.reconciliation_status or "—" }}</span>
+            </td>
+            <td>
+                <span class="label">{{ _("Rule Pack") }}</span>
+                <span class="value">{{ doc.rule_pack or "—" }}</span>
+            </td>
+            <td>
+                <span class="label">{{ _("Verification Fragment") }}</span>
+                <span class="value">{{ doc.file_hash[-8:] if doc.file_hash else "—" }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <table class="summary">
+        <tr>
+            <td>
+                <span class="label">{{ _("Total Wages") }}</span>
+                <span class="summary-value">{{ doc.get_formatted("total_wages") }}</span>
+            </td>
+            <td>
+                <span class="label">{{ _("Total Employee") }}</span>
+                <span class="summary-value">{{ doc.get_formatted("total_employee") }}</span>
+            </td>
+            <td>
+                <span class="label">{{ _("Total Employer") }}</span>
+                <span class="summary-value">{{ doc.get_formatted("total_employer") }}</span>
+            </td>
+            <td>
+                <span class="label">{{ _("LINDUNG 24 Jam") }}</span>
+                <span class="summary-value">{{ doc.get_formatted("total_additional") }}</span>
+            </td>
+        </tr>
+    </table>
+
+    {% set breakdown = doc.scheme_breakdown() %}
+    {% if breakdown %}
+        <div class="section">
+            <div class="section-title">{{ _("Scheme Breakdown") }}</div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="scheme">{{ _("Scheme") }}</th>
+                        <th class="amount">{{ _("Wage Base") }}</th>
+                        <th class="amount">{{ _("Employee") }}</th>
+                        <th class="amount">{{ _("Employer") }}</th>
+                        <th class="amount">{{ _("Additional / LINDUNG") }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scheme, amounts in breakdown.items()|sort %}
+                        <tr>
+                            <td>{{ scheme }}</td>
+                            <td class="amount">{{ frappe.format_value(amounts.wage_base, {"fieldtype": "Currency", "options": "MYR"}) }}</td>
+                            <td class="amount">{{ frappe.format_value(amounts.employee_amount, {"fieldtype": "Currency", "options": "MYR"}) }}</td>
+                            <td class="amount">{{ frappe.format_value(amounts.employer_amount, {"fieldtype": "Currency", "options": "MYR"}) }}</td>
+                            <td class="amount">
+                                {% if amounts.extra_employee_amount %}
+                                    {{ frappe.format_value(amounts.extra_employee_amount, {"fieldtype": "Currency", "options": "MYR"}) }}
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <div class="section">
+        <div class="section-title">{{ _("Employee Totals") }}</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="scheme">{{ _("Employee") }}</th>
+                    <th class="amount">{{ _("Wages") }}</th>
+                    <th class="amount">{{ _("Employee") }}</th>
+                    <th class="amount">{{ _("Employer") }}</th>
+                    <th class="amount">{{ _("LINDUNG") }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in doc.employee_lines or [] %}
+                    <tr>
+                        <td>{{ row.employee_name or row.employee }}</td>
+                        <td class="amount">{{ row.get_formatted("wages", doc) }}</td>
+                        <td class="amount">{{ row.get_formatted("employee_amount", doc) }}</td>
+                        <td class="amount">{{ row.get_formatted("employer_amount", doc) }}</td>
+                        <td class="amount">{% if row.additional_amount %}{{ row.get_formatted("additional_amount", doc) }}{% else %}—{% endif %}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="5" class="muted">{{ _("No employees recorded.") }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        {{ _("This working paper supports maker/checker sign-off before submission to the authority. It is a preparation record, not proof of authority acceptance.") }}
+    </div>
+</div>
+"""
+
+
+FILING_CSS = """
+.print-format {
+    margin: 0;
+    padding: 0;
+}
+"""
+
+
 def ensure_salary_slip_print_format() -> None:
 	"""Ensure the one employee-facing Salary Slip format is installed and selected."""
 	if not frappe.db.exists("DocType", "Salary Slip"):
@@ -527,3 +753,68 @@ def ensure_salary_slip_print_format() -> None:
 			validate_fields_for_doctype=False,
 		)
 		frappe.clear_cache(doctype="Salary Slip")
+
+
+def ensure_filing_print_format() -> None:
+	"""Ensure the maker/checker working-paper format is installed and selected."""
+	if not frappe.db.exists("DocType", "Malaysia Statutory Filing"):
+		return
+
+	if frappe.db.exists("Print Format", FILING_PRINT_FORMAT):
+		print_format = frappe.get_doc("Print Format", FILING_PRINT_FORMAT)
+		if print_format.doc_type not in {None, "Malaysia Statutory Filing"}:
+			frappe.throw(
+				_("Print Format {0} belongs to {1}; rename it before enabling Malaysia Payroll.").format(
+					frappe.bold(FILING_PRINT_FORMAT), frappe.bold(print_format.doc_type)
+				)
+			)
+	else:
+		print_format = frappe.new_doc("Print Format")
+		print_format.name = FILING_PRINT_FORMAT
+
+	print_format.update(
+		{
+			"doc_type": "Malaysia Statutory Filing",
+			"print_format_for": "DocType",
+			"standard": "No",
+			"custom_format": 1,
+			"disabled": 0,
+			"print_format_type": "Jinja",
+			"html": FILING_HTML,
+			"css": FILING_CSS,
+			"pdf_generator": None,
+			"font": "Default",
+			"font_size": 10,
+			"margin_top": 11,
+			"margin_bottom": 11,
+			"margin_left": 12,
+			"margin_right": 12,
+			"page_number": "Bottom Right",
+		}
+	)
+	if print_format.is_new():
+		print_format.insert(ignore_permissions=True)
+	else:
+		print_format.save(ignore_permissions=True)
+
+	default_print_format = frappe.get_meta("Malaysia Statutory Filing").default_print_format
+	if default_print_format not in (None, "", "Standard", FILING_PRINT_FORMAT):
+		frappe.throw(
+			_("Malaysia Statutory Filing already uses the custom Print Format {0}. Set it to {1} before enabling Malaysia Payroll.").format(
+				frappe.bold(default_print_format), frappe.bold(FILING_PRINT_FORMAT)
+			)
+		)
+
+	if default_print_format != FILING_PRINT_FORMAT:
+		from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+
+		make_property_setter(
+			"Malaysia Statutory Filing",
+			None,
+			"default_print_format",
+			FILING_PRINT_FORMAT,
+			"Data",
+			for_doctype=True,
+			validate_fields_for_doctype=False,
+		)
+		frappe.clear_cache(doctype="Malaysia Statutory Filing")

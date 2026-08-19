@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from malaysia_workforce.payroll.wages import (
+	counts_toward_overtime_cap,
 	incomplete_month_wage,
 	minimum_wage,
 	ordinary_hourly_rate,
@@ -34,6 +35,15 @@ def test_minimum_wage_validation_for_monthly_daily_and_hourly_rates():
 
 def test_incomplete_month_uses_calendar_days():
 	assert incomplete_month_wage(1700, 15, 31) == Decimal("822.58")
+
+
+def test_rest_day_and_public_holiday_hours_excluded_from_overtime_cap():
+	"""EA1955 s60A(4)(a)'s proviso: only true overtime counts toward the 104-hour cap."""
+	assert counts_toward_overtime_cap("Rest Day") is False
+	assert counts_toward_overtime_cap("Public Holiday") is False
+	assert counts_toward_overtime_cap("Normal Overtime") is True
+	assert counts_toward_overtime_cap(None) is True
+	assert counts_toward_overtime_cap("") is True
 
 
 def test_overtime_rest_day_and_public_holiday_pay():

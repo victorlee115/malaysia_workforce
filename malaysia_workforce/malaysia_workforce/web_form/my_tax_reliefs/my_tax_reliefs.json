@@ -1,6 +1,6 @@
 {
  "doctype":"Web Form", "name":"my-tax-reliefs", "module":"Malaysia Workforce", "is_standard":1,
- "doc_type":"Malaysia Tax Declaration TP1", "title":"My Tax Reliefs (TP1)", "route":"my-tax-reliefs",
+ "doc_type":"Malaysia Tax Declaration TP1", "title":"Tax Reliefs (TP1)", "route":"my-tax-reliefs",
  "published":1, "login_required":1, "anonymous":0, "allow_edit":1, "allow_delete":1,
  "allow_multiple":1, "show_list":1, "show_sidebar":0, "apply_document_permissions":1,
  "button_label":"Send for Review", "success_title":"Sent for Review",

@@ -7,7 +7,7 @@ from malaysia_workforce.patches.v1_0.retire_parallel_hr_roles import require_rev
 from malaysia_workforce.setup.custom_fields import create_custom_fields, remove_legacy_custom_fields
 from malaysia_workforce.setup.master_data import create_master_data
 from malaysia_workforce.setup.permissions import ensure_standard_record_permissions
-from malaysia_workforce.setup.print_formats import ensure_salary_slip_print_format
+from malaysia_workforce.setup.print_formats import ensure_filing_print_format, ensure_salary_slip_print_format
 from malaysia_workforce.setup.workflows import ensure_tax_declaration_workflows
 
 SUPPORTED_MAJOR = 16
@@ -31,6 +31,7 @@ def after_install():
 	ensure_standard_record_permissions()
 	create_master_data()
 	ensure_salary_slip_print_format()
+	ensure_filing_print_format()
 	ensure_tax_declaration_workflows()
 	frappe.clear_cache()
 
@@ -52,5 +53,6 @@ def after_migrate():
 	ensure_standard_record_permissions()
 	create_master_data()
 	ensure_salary_slip_print_format()
+	ensure_filing_print_format()
 	ensure_tax_declaration_workflows()
 	frappe.clear_cache()

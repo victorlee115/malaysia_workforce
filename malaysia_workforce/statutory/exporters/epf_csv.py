@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Iterable
 
+from malaysia_workforce.statutory.exporters.common import digits
+
 
 @dataclass(frozen=True)
 class EPFCSVRecord:
@@ -17,19 +19,31 @@ class EPFCSVRecord:
 	employee_share: Decimal
 
 
-def _validate(item: EPFCSVRecord) -> None:
-	member_number = str(item.member_number or "").strip()
-	identity_number = str(item.identity_number or "").strip()
-	name = str(item.name or "").strip()
+def _ascii_text(value, label: str) -> str:
+	text = "" if value is None else str(value)
+	try:
+		text.encode("ascii")
+	except UnicodeEncodeError as exc:
+		raise ValueError(f"{label} contains non-ASCII characters; provide the authority-approved ASCII spelling") from exc
+	if any(character in text for character in ("\r", "\n", "\x00")):
+		raise ValueError(f"{label} contains an unsupported control character")
+	return text
+
+
+def _normalized_identity(item: EPFCSVRecord) -> tuple[str, str, str]:
+	member_number = digits(item.member_number)
+	identity_number = digits(item.identity_number)
+	name = _ascii_text(item.name, "EPF employee name").strip()
 	if not member_number:
 		raise ValueError("EPF member number is required")
 	if not identity_number:
 		raise ValueError("EPF identity number is required")
 	if not name:
 		raise ValueError("EPF employee name is required")
-	for label, value in (("member number", member_number), ("identity number", identity_number), ("name", name)):
-		if any(character in value for character in ("\r", "\n", "\x00")):
-			raise ValueError(f"EPF {label} contains an unsupported control character")
+	return member_number, identity_number, name
+
+
+def _validate_amounts(item: EPFCSVRecord) -> None:
 	for label, value in (
 		("wages", item.wages),
 		("employer share", item.employer_share),
@@ -52,14 +66,15 @@ def generate_epf_csv(records: Iterable[EPFCSVRecord], *, include_header: bool = 
 	stream = io.StringIO(newline="")
 	writer = csv.writer(stream, lineterminator="\r\n")
 	if include_header:
-		writer.writerow(["Member No", "IC No", "Name", "Salary", "EM Share", "EMP Share"])
+		writer.writerow(["Member No", "IC No", "Name", "Salary", "Employer Share", "Employee Share"])
 	for item in items:
-		_validate(item)
+		_validate_amounts(item)
+		member_number, identity_number, name = _normalized_identity(item)
 		writer.writerow(
 			[
-				item.member_number,
-				item.identity_number,
-				item.name,
+				member_number,
+				identity_number,
+				name,
 				f"{item.wages:.2f}",
 				f"{item.employer_share:.2f}",
 				f"{item.employee_share:.2f}",

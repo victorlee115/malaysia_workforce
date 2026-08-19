@@ -56,6 +56,11 @@ def overtime_pay(hourly_rate, hours) -> Decimal:
 	return money(decimal(hourly_rate) * decimal(hours) * Decimal("1.5"))
 
 
+def counts_toward_overtime_cap(pay_type: str | None) -> bool:
+	"""EA1955 s60A(4)(a)'s proviso excludes rest-day and public-holiday hours from the 104-hour cap."""
+	return pay_type not in {"Rest Day", "Public Holiday"}
+
+
 def rest_day_work_pay(hourly_rate, hours, normal_hours, *, monthly_rated: bool) -> Decimal:
 	rate, worked, normal = decimal(hourly_rate), decimal(hours), decimal(normal_hours)
 	if min(rate, worked, normal) < 0 or normal == 0:

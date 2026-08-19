@@ -6,14 +6,27 @@ import frappe
 from frappe import _
 from frappe.utils import get_first_day, get_last_day, getdate
 
+from malaysia_workforce.payroll.wages import counts_toward_overtime_cap
+
 
 def _month_key(value) -> tuple[int, int]:
 	day = getdate(value)
 	return day.year, day.month
 
 
-def _add_monthly_hours(totals: dict[tuple[int, int], Decimal], rows) -> None:
+def _pay_types(names) -> dict[str, str | None]:
+	return {
+		row.name: row.custom_malaysia_pay_type
+		for row in frappe.get_all(
+			"Overtime Type", filters={"name": ["in", list(names)]}, fields=["name", "custom_malaysia_pay_type"]
+		)
+	}
+
+
+def _add_monthly_hours(totals: dict[tuple[int, int], Decimal], rows, pay_types: dict[str, str | None]) -> None:
 	for row in rows:
+		if not counts_toward_overtime_cap(pay_types.get(row.overtime_type)):
+			continue
 		key = _month_key(row.date)
 		hours = getattr(row, "overtime_duration", None)
 		if hours is None:
@@ -28,15 +41,13 @@ class MalaysiaOvertimeMixin:
 		super().validate()
 		if not self._malaysia_enabled():
 			return
-		monthly = {}
-		_add_monthly_hours(monthly, self.overtime_details or [])
+		current_rows = self.overtime_details or []
 		existing_rows = frappe.db.sql(
-			"""select detail.date, sum(detail.overtime_duration) as hours
+			"""select detail.date, detail.overtime_duration as hours, detail.overtime_type
 			from `tabOvertime Details` detail
 			inner join `tabOvertime Slip` slip on slip.name=detail.parent
 			where slip.employee=%s and slip.docstatus<2 and slip.name!=%s
-			and detail.date between %s and %s
-			group by detail.date""",
+			and detail.date between %s and %s""",
 			(
 				self.employee,
 				self.name or "",
@@ -45,7 +56,10 @@ class MalaysiaOvertimeMixin:
 			),
 			as_dict=True,
 		)
-		_add_monthly_hours(monthly, existing_rows)
+		pay_types = _pay_types({row.overtime_type for row in (*current_rows, *existing_rows) if row.overtime_type})
+		monthly = {}
+		_add_monthly_hours(monthly, current_rows, pay_types)
+		_add_monthly_hours(monthly, existing_rows, pay_types)
 		for (year, month), hours in sorted(monthly.items()):
 			if hours > Decimal("104"):
 				frappe.throw(

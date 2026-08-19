@@ -116,6 +116,25 @@ def test_salary_slip_print_format_does_not_add_a_second_employee_format():
 	assert "create_competing" not in print_formats
 
 
+def test_filing_has_one_working_paper_print_format():
+	print_formats = (ROOT / "malaysia_workforce" / "setup" / "print_formats.py").read_text()
+	install = (ROOT / "malaysia_workforce" / "install.py").read_text()
+
+	assert 'FILING_PRINT_FORMAT = "Malaysia Statutory Filing Working Paper"' in print_formats
+	assert '"doc_type": "Malaysia Statutory Filing"' in print_formats
+	assert '"print_format_type": "Jinja"' in print_formats
+	assert '"pdf_generator": None' in print_formats
+	assert "ensure_filing_print_format()" in install
+
+	html = print_formats.split('FILING_HTML = r"""', 1)[1].split('"""', 1)[0]
+	# The full hash is an internal audit fingerprint; only a short verification fragment
+	# for maker/checker sign-off belongs on a printed working paper.
+	assert "source_hash" not in html
+	assert "doc.file_hash[-8:]" in html
+	assert "scheme_breakdown" in html
+	assert "Employee Totals" in html
+
+
 def test_tax_permission_refresh_is_one_time_and_narrow():
 	patches = (ROOT / "malaysia_workforce" / "patches.txt").read_text()
 	refresh = (
@@ -203,6 +222,46 @@ def test_localisation_does_not_reintroduce_parallel_hr_records():
 	assert '"Payroll Entry": [' not in active_definition
 
 
+def test_filing_list_uses_a_readable_title_and_portal_status():
+	path = (
+		ROOT
+		/ "malaysia_workforce"
+		/ "malaysia_workforce"
+		/ "doctype"
+		/ "malaysia_statutory_filing"
+		/ "malaysia_statutory_filing.json"
+	)
+	payload = json.loads(path.read_text(encoding="utf-8"))
+	fields = {row["fieldname"]: row for row in payload["fields"]}
+	assert payload.get("title_field") == "title"
+	assert fields["title"].get("in_list_view") == 1
+	assert fields["authority_status"]["label"] == "Portal Status"
+	source = (
+		ROOT
+		/ "malaysia_workforce"
+		/ "malaysia_workforce"
+		/ "doctype"
+		/ "malaysia_statutory_filing"
+		/ "malaysia_statutory_filing.py"
+	).read_text()
+	assert "strftime('%b %Y')" in source
+
+
+def test_workspace_includes_setup_records_outside_crm():
+	workspace = json.loads(
+		(
+			ROOT
+			/ "malaysia_workforce"
+			/ "malaysia_workforce"
+			/ "workspace"
+			/ "malaysia_payroll"
+			/ "malaysia_payroll.json"
+		).read_text(encoding="utf-8")
+	)
+	linked = {row.get("link_to") for row in workspace["links"] if row.get("type") == "Link"}
+	assert {"Employee", "Contract", "Salary Component", "Overtime Type"} <= linked
+
+
 def test_routine_forms_hide_internal_filing_fingerprints():
 	path = (
 		ROOT
@@ -214,8 +273,12 @@ def test_routine_forms_hide_internal_filing_fingerprints():
 	)
 	payload = json.loads(path.read_text(encoding="utf-8"))
 	fields = {row["fieldname"]: row for row in payload["fields"]}
-	for fieldname in ("generated_file", "source_hash", "file_hash"):
+	for fieldname in ("source_hash", "file_hash"):
 		assert fields[fieldname].get("hidden") == 1
+	# The prepared output itself is a private File a user must be able to see and download,
+	# unlike the internal hash fingerprints above — it stays read-only but not hidden.
+	assert not fields["generated_file"].get("hidden")
+	assert fields["generated_file"].get("read_only") == 1
 
 
 def test_custom_field_labels_are_native_inside_the_country_boundary():

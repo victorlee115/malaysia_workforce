@@ -8,18 +8,19 @@ from malaysia_workforce.payroll.profile import (
 	SOCSO_EIS_LINDUNG_PROFILE,
 	STANDARD_PAYROLL_PROFILE,
 	STATUTORY_PROFILE_FIELD,
-	is_socso_eis_lindung_profile,
 	normalize_statutory_profile,
 	scheme_applies,
 )
 from malaysia_workforce.payroll.validation import (
 	employee_statutory_profile,
+	epf_socso_eis_earning_component_issues,
 	hrd_registration_issues,
 	lindung_payroll_issues,
+	required_identity_field_issues,
 	socso_eis_earning_component_issues,
 	unclassified_earning_components,
 )
-from malaysia_workforce.statutory.rule_pack import reviewed_through
+from malaysia_workforce.statutory.rule_pack import assert_rule_pack_covers
 
 
 def _employee_names(doc) -> list[str]:
@@ -41,7 +42,6 @@ def employee_readiness(employee: str, company: str, on_date) -> list[str]:
 			"custom_nric",
 			"custom_epf_member_number",
 			"custom_socso_category",
-			"custom_eis_eligible",
 			STATUTORY_PROFILE_FIELD,
 			"custom_lindung_participation",
 			"custom_lindung_registration_date",
@@ -61,23 +61,7 @@ def employee_readiness(employee: str, company: str, on_date) -> list[str]:
 	profile = normalize_statutory_profile(row.get(STATUTORY_PROFILE_FIELD))
 	if profile not in {STANDARD_PAYROLL_PROFILE, SOCSO_EIS_LINDUNG_PROFILE}:
 		errors.append(_("Select a valid Statutory Profile."))
-	required_identity = [(row.custom_nric, "NRIC"), (row.custom_socso_category, "SOCSO Category")]
-	if scheme_applies(profile, "EPF"):
-		required_identity.insert(0, (row.date_of_birth, "Date of Birth"))
-	for value, label in required_identity:
-		if not value:
-			errors.append(_("{0} is missing.").format(label))
-	if is_socso_eis_lindung_profile(profile) and not row.custom_eis_eligible:
-		errors.append(_("EIS Eligible must be enabled for the SOCSO + EIS — LINDUNG Optional profile."))
-	if scheme_applies(profile, "EPF") and not row.custom_epf_member_number:
-		errors.append(_("EPF Member Number is missing."))
-	if scheme_applies(profile, "PCB"):
-		for value, label in (
-			(row.custom_tax_identification_number, "Tax Identification Number"),
-			(row.custom_pcb_category, "PCB Category"),
-		):
-			if not value:
-				errors.append(_("{0} is missing.").format(label))
+	errors.extend(required_identity_field_issues(row, profile))
 	errors.extend(lindung_payroll_issues(row))
 
 	assignment = frappe.db.get_value(
@@ -105,6 +89,7 @@ def employee_readiness(employee: str, company: str, on_date) -> list[str]:
 				errors.append(
 					_("Set PCB Treatment for earning components: {0}.").format(", ".join(unclassified))
 				)
+			errors.extend(epf_socso_eis_earning_component_issues(component_names))
 		else:
 			errors.extend(socso_eis_earning_component_issues(component_names))
 
@@ -168,12 +153,42 @@ def employee_readiness(employee: str, company: str, on_date) -> list[str]:
 	return errors
 
 
+def _wage_basis_notes(employee: str, on_date) -> list[str]:
+	"""Non-blocking flags for setups this app cannot verify from data alone.
+
+	Base pay for Daily/Hourly-rated employees is computed by the ordinary HRMS Salary
+	Structure, outside this app's scope. Whether an unworked gazetted public holiday is
+	still paid (EA1955 s60D(1)) depends on which HRMS wage mechanism the Salary Structure
+	uses: a payment-days-prorated component already pays it, since this app requires
+	'Include holidays in Total no. of Working Days' to stay enabled; an attendance- or
+	timesheet-hours-based component does not, since no hours are logged for a day nobody
+	worked. This cannot be checked from data, so it is flagged for manual review rather
+	than silently assumed either way.
+	"""
+	contracts = frappe.get_all(
+		"Contract",
+		filters={"party_type": "Employee", "party_name": employee, "status": "Active", "start_date": ["<=", on_date]},
+		fields=["end_date", "custom_malaysia_wage_basis"],
+		order_by="start_date desc",
+	)
+	contract = next((item for item in contracts if not item.end_date or getdate(item.end_date) >= getdate(on_date)), None)
+	if contract and contract.custom_malaysia_wage_basis in {"Daily", "Hourly"}:
+		return [
+			_(
+				"Daily/Hourly base pay is outside this app's scope. Confirm the Salary Structure pays an "
+				"ordinary day's wage for gazetted public holidays this employee does not work."
+			)
+		]
+	return []
+
+
 def readiness(doc) -> list[dict]:
 	return [
 		{
 			"employee": employee,
 			"profile": normalize_statutory_profile(frappe.db.get_value("Employee", employee, STATUTORY_PROFILE_FIELD)),
 			"issues": employee_readiness(employee, doc.company, doc.end_date),
+			"notes": _wage_basis_notes(employee, doc.end_date),
 		}
 		for employee in _employee_names(doc)
 	]
@@ -219,12 +234,7 @@ def validate_payroll_release(doc, method=None):
 		frappe.throw(
 			_("Enable 'Include holidays in Total no. of Working Days' in Payroll Settings for calendar-day incomplete-month calculations.")
 		)
-	if getdate(doc.end_date) > reviewed_through():
-		frappe.throw(
-			_("The installed statutory rule pack is reviewed only through {0}. Install a reviewed app release before submission.").format(
-				reviewed_through()
-			)
-		)
+	assert_rule_pack_covers(doc.end_date)
 
 
 @frappe.whitelist()

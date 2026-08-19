@@ -58,8 +58,11 @@ def render_record(item: PERKESOCombinedRecord) -> str:
 	record = "".join(
 		(
 			fixed_text(_max_text(item.employer_code, 12, "Employer code", required=True), 12, uppercase=True),
-			fixed_text(_max_text(item.company_registration_number, 20, "Company registration number", required=True), 20, uppercase=True),
-			fixed_text(_max_text(item.employee_identity_number, 12, "Employee identification number", required=True), 12, uppercase=True),
+			# MyCoID/SSM Number is field 2 (position 13-32) in PERKESO's own "Spesifikasi
+			# Format Text File Untuk SOCSO + EIS Contribution" v1.0 (22 July 2022), marked
+			# Mandatory: N ("ROB, ROC") — genuinely optional, not a gap to close.
+			fixed_text(_max_text(item.company_registration_number, 20, "Company registration number"), 20, uppercase=True),
+			fixed_text(_max_text(digits(item.employee_identity_number), 12, "Employee identification number", required=True), 12, uppercase=True),
 			fixed_text(_max_text(item.employee_name, 150, "Employee name", required=True), 150, uppercase=True),
 			month,
 			cents(item.wages, 14),

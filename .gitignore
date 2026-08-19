@@ -12,3 +12,4 @@ dist/
 .env.*
 apps.json
 *.log
+ui-review/

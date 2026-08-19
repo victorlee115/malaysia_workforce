@@ -3,7 +3,7 @@
  "autoname":"naming_series:", "title_field":"employee", "track_changes":1, "allow_import":1, "is_submittable":1,
  "field_order":["naming_series","employee","company","currency","tax_year","declaration_date","relief_section","relief_claims","total_reliefs","declaration_section","employee_declaration","review_section","manual_review_notes","manual_review_approved_by","manual_review_approved_on","amended_from"],
  "fields":[
-  {"fieldname":"naming_series","label":"Series","fieldtype":"Select","options":"MY-TP1-.YYYY.-.#####","default":"MY-TP1-.YYYY.-.#####","reqd":1},
+  {"fieldname":"naming_series","label":"Series","fieldtype":"Select","options":"MY-TP1-.YYYY.-.#####","default":"MY-TP1-.YYYY.-.#####","reqd":1,"hidden":1},
   {"fieldname":"employee","label":"Employee","fieldtype":"Link","options":"Employee","reqd":1,"in_list_view":1},
   {"fieldname":"company","label":"Company","fieldtype":"Link","options":"Company","fetch_from":"employee.company","reqd":1},
   {"fieldname":"currency","label":"Currency","fieldtype":"Data","default":"MYR","read_only":1,"hidden":1},

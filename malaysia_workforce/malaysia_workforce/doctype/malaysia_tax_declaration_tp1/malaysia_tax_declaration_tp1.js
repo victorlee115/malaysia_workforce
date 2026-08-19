@@ -13,6 +13,7 @@ function apply_tax_permissions(frm) {
 	const privileged = frappe.user.has_role(["HR Manager", "System Manager"]);
 	frm.set_df_property("review_section", "hidden", !privileged);
 	if (privileged && frm.doc.workflow_state === "Pending Review") {
+		frm.set_df_property("review_section", "collapsed", 0);
 		["employee", "company", "tax_year", "declaration_date", "relief_claims", "employee_declaration"]
 			.forEach((fieldname) => frm.set_df_property(fieldname, "read_only", 1));
 	}
@@ -35,7 +36,8 @@ function set_tp1_employee_defaults(frm) {
 frappe.ui.form.on("Malaysia Tax Relief Claim", {
 	relief_code(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
-		row.description = frm._tp1_catalog?.[row.relief_code] || "";
+		const code = String(row.relief_code || "").trim().split(/\s+/)[0];
+		row.description = frm._tp1_catalog?.[code] || "";
 		frm.refresh_field("relief_claims");
 	},
 });
@@ -48,7 +50,8 @@ function load_relief_catalog(frm) {
 		callback: ({ message }) => {
 			frm._tp1_catalog = message || {};
 			(frm.doc.relief_claims || []).forEach((row) => {
-				row.description = frm._tp1_catalog[row.relief_code] || row.description;
+				const code = String(row.relief_code || "").trim().split(/\s+/)[0];
+				row.description = frm._tp1_catalog[code] || row.description;
 			});
 			frm.refresh_field("relief_claims");
 		},

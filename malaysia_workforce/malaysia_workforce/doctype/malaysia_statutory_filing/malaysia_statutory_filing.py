@@ -6,6 +6,8 @@ from frappe.utils import getdate, now_datetime
 
 class MalaysiaStatutoryFiling(Document):
 	def validate(self):
+		if self.authority and self.period_end:
+			self.title = f"{self.authority} {getdate(self.period_end).strftime('%b %Y')}"
 		if getdate(self.period_end) < getdate(self.period_start):
 			frappe.throw(_("Period End cannot be before Period Start."))
 		duplicate = frappe.db.get_value(
@@ -37,6 +39,16 @@ class MalaysiaStatutoryFiling(Document):
 		self.reconciliation_status = "Not Reconciled"
 		self.submitted_by = frappe.session.user
 		self.submitted_at = now_datetime()
+
+	def before_cancel(self):
+		if self.reconciliation_status == "Reconciled" or self.authority_status == "Accepted":
+			frappe.throw(_("A Reconciled or Accepted filing cannot be cancelled. Amend the authority record through its own correction process instead."))
+
+	def scheme_breakdown(self):
+		"""Called by the print format Jinja template; not an RPC endpoint."""
+		from malaysia_workforce.statutory.filing import scheme_breakdown
+
+		return scheme_breakdown(self)
 
 	@frappe.whitelist()
 	def prepare(self):
